@@ -1,5 +1,4 @@
-This is a fun test project to get environment mapping working in WebGL! And perhaps other things, too!
+This is a personal project that implements physically-based rendering in WebGL.
 
-This project is made with the aid of Edward Angel's basic library that holds functions that performs basic matrix functions.
+Included is a small matrix library that I have developed to supplement the project's matrix computations.
 
-All other graphical implementations are done purely from WebGL and from the ground up.

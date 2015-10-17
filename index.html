@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>WebGL Environment Mapping</title>
+    </head>
+    <body>
+        <!-- Canvas for rendering WebGL image. -->
+        <canvas id="canvas" width="1280" height="720"></canvas>
+
+        <!-- All the code for interfacing with GLSL with JavaScript. -->
+
+        <!-- Vertex shader code. -->
+        <script id="vertex-shader" type="x-shader/x-vertex">
+
+            attribute vec3 AVertexPosition;
+            attribute vec4 AVertexColor;
+
+            uniform mat4 UMatModelView;
+            uniform mat4 UMatProj;
+
+            varying lowp vec4 VColor;
+
+            void main(void) {
+                gl_Position = UMatProj * UMatModelView * vec4(AVertexPosition, 1.0);
+                VColor = AVertexColor;
+            }
+
+        </script>
+
+        <!-- Fragment shader code. -->
+        <script id="fragment-shader" type="x-shader/x-fragment">
+
+            varying lowp vec4 VColor;
+
+            void main(void) {
+                gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+                gl_FragColor = VColor;
+            }
+
+        </script>
+
+        <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
+        <script type="text/javascript" src="javascript/webgl-utils.js"></script>
+        <script type="text/javascript" src="javascript/glmathlib.js"></script>
+        <script type="text/javascript" src="javascript/main.js"></script>
+    </body>
+</html>
