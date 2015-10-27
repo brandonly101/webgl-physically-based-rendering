@@ -1,11 +1,11 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>WebGL Environment Mapping</title>
+        <title>WebGL Physically Based Rendering</title>
     </head>
     <body>
         <!-- Canvas for rendering WebGL image. -->
-        <canvas id="canvas" width="1280" height="720"></canvas>
+        <canvas id="webgl-canvas" width="1280" height="720"></canvas>
 
         <!-- All the code for interfacing with GLSL with JavaScript. -->
 
@@ -13,16 +13,26 @@
         <script id="vertex-shader" type="x-shader/x-vertex">
 
             attribute vec3 AVertexPosition;
-            attribute vec4 AVertexColor;
+            attribute vec3 AVertexNormal;
 
+            uniform vec3 ULightPosition;
+            uniform mat4 UMatModel;
             uniform mat4 UMatModelView;
             uniform mat4 UMatProj;
 
-            varying lowp vec4 VColor;
+            varying vec3 L, N, E;
+            varying vec4 VColor;
 
             void main(void) {
+                // Calculate the position and normals to pass into the fragment shader.
+                vec3 PosTransform = (UMatModel * vec4(AVertexPosition, 1.0)).xyz;
+                vec3 NormTransform = (UMatModel * vec4(AVertexNormal, 0.0)).xyz;
+
+                L = normalize(ULightPosition - PosTransform);
+                N = normalize(NormTransform);
+                E = normalize(-PosTransform);
+
                 gl_Position = UMatProj * UMatModelView * vec4(AVertexPosition, 1.0);
-                VColor = AVertexColor;
             }
 
         </script>
@@ -30,16 +40,36 @@
         <!-- Fragment shader code. -->
         <script id="fragment-shader" type="x-shader/x-fragment">
 
-            varying lowp vec4 VColor;
+            precision mediump float;
+
+            uniform vec4 UAmbientProduct, UDiffuseProduct, USpecularProduct;
+
+            varying vec3 L, N, E;
+            varying vec4 VColor;
 
             void main(void) {
-                gl_FragColor = vec4(1.0, 1.0, 0.0, 1.0);
+                // Calculate the color/intensities of each respective light.
+                vec4 ColorAmbient, ColorDiffuse, ColorSpecular;
+                
+                // Ambient light.
+                ColorAmbient = UAmbientProduct;
+                
+                // Diffuse light.
+                ColorDiffuse = max(dot(L, N), 0.0) * UDiffuseProduct;
+                
+                // Specular light.
+                vec3 H = normalize(L + E);
+                ColorSpecular = max(pow(max(dot(H, N), 0.0), 16.0) * USpecularProduct, 0.0);
+
+                // Add all the lights up.
+                vec4 VColor = ColorAmbient + ColorDiffuse + ColorSpecular;
+                VColor.a = 1.0;
+
                 gl_FragColor = VColor;
             }
 
         </script>
 
-        <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
         <script type="text/javascript" src="javascript/webgl-utils.js"></script>
         <script type="text/javascript" src="javascript/glmathlib.js"></script>
         <script type="text/javascript" src="javascript/main.js"></script>

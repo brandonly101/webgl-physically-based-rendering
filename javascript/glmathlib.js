@@ -39,7 +39,7 @@ var GLMathLib = {
     vec4: function() {
         var args = Array.prototype.slice.call(arguments);
         if (args.length == 2) {
-            return [argsargs[0][0], args[0][1], args[0][2], args[1]];
+            return [args[0][0], args[0][1], args[0][2], args[1]];
         } else if (args.length == 4) {
             return [args[0], args[1], args[2], args[3]];
         } else {
@@ -108,7 +108,11 @@ var GLMathLib = {
 
     mult: function(u, v) {
         var result;
-        if (u.length == 16 && v.length == 4) {
+        if (u.length == 3 && v.length == 3) {
+            result = this.vec3(u[0]*v[0], u[1]*v[1], u[2]*v[2]);
+        } else if (u.length == 4 && v.length == 4) {
+            result = this.vec4(u[0]*v[0], u[1]*v[1], u[2]*v[2], u[3]*v[3]);
+        } else if (u.length == 16 && v.length == 4) {
             result = this.vec4();
             for (i = 0; i < 4; i++) {
                 result[i] = (
@@ -182,6 +186,29 @@ var GLMathLib = {
                 u[3]*0.5 + v[3]*0.5
             );
         }
+    },
+
+    // Invert the matrix.
+    inverse: function(arg) {
+        result = [];
+        return result;
+    },
+
+    // Transpose the matrix.
+    transpose: function(arg) {
+        var result = [];
+        var N = Math.sqrt(arg.length);
+        var ii = 0;
+        var jj = 0;
+        for (i = 0; i < N; i++) {
+            for (j = 0; j < N; j++) {
+                result[ii+j] = arg[i+jj];
+                jj += N;
+            }
+            ii += N;
+            jj = 0;
+        }
+        return result;
     },
 
     // Transformation matrix functions that create transformation matrices.
