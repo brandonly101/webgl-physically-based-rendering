@@ -14,25 +14,38 @@
 
             attribute vec3 AVertexPosition;
             attribute vec3 AVertexNormal;
+            attribute vec2 ATextureCoord;
 
-            uniform vec3 ULightPosition;
-            uniform mat4 UMatModel;
-            uniform mat4 UMatModelView;
-            uniform mat4 UMatProj;
+            uniform bool USkybox;
+            uniform vec4 UCamPosition;
+            uniform vec4 ULightPosition;
+            uniform mat4 UMatModel, UMatView, UMatProj;
+            uniform mat4 UMatNormal;
 
             varying vec3 L, N, E;
-            varying vec4 VColor;
+            varying vec3 VPosEye;
+            varying vec3 VTextureCoordSkybox;
 
             void main(void) {
-                // Calculate the position and normals to pass into the fragment shader.
-                vec3 PosTransform = (UMatModel * vec4(AVertexPosition, 1.0)).xyz;
-                vec3 NormTransform = (UMatModel * vec4(AVertexNormal, 0.0)).xyz;
 
-                L = normalize(ULightPosition - PosTransform);
+                // Calculate the position and normals to pass into the fragment shader.
+                vec3 PosTransform = vec3(UMatView * UMatModel * vec4(AVertexPosition, 1.0));
+                vec3 NormTransform = vec3(UMatView * UMatModel * vec4(AVertexNormal, 0.0));
+                vec3 LightTransform = (UMatView * ULightPosition).xyz;
+
+                // Calculate environment mapping variables.
+                VPosEye = normalize(PosTransform);
+
+                L = normalize(LightTransform - PosTransform);
                 N = normalize(NormTransform);
                 E = normalize(-PosTransform);
 
-                gl_Position = UMatProj * UMatModelView * vec4(AVertexPosition, 1.0);
+                if (USkybox)
+                {
+                    VTextureCoordSkybox = AVertexPosition;
+                }
+
+                gl_Position = UMatProj * UMatView * UMatModel * vec4(AVertexPosition, 1.0);
             }
 
         </script>
@@ -42,15 +55,21 @@
 
             precision mediump float;
 
+            uniform bool USkybox;
             uniform vec4 UAmbientProduct, UDiffuseProduct, USpecularProduct;
+            uniform samplerCube USamplerCube;
+            uniform mat4 UMatCameraRot;
+            uniform mat4 UMatViewInv;
 
             varying vec3 L, N, E;
+            varying vec3 VPosEye;
+            varying vec3 VTextureCoordSkybox;
             varying vec4 VColor;
 
             void main(void) {
                 // Calculate the color/intensities of each respective light.
-                vec4 ColorAmbient, ColorDiffuse, ColorSpecular;
-                
+                vec4 ColorAmbient, ColorDiffuse, ColorSpecular, VColor;
+
                 // Ambient light.
                 ColorAmbient = UAmbientProduct;
                 
@@ -59,11 +78,23 @@
                 
                 // Specular light.
                 vec3 H = normalize(L + E);
-                ColorSpecular = max(pow(max(dot(H, N), 0.0), 16.0) * USpecularProduct, 0.0);
+                ColorSpecular = max(pow(max(dot(H, N), 0.0), 100.0) * USpecularProduct, 0.0);
 
                 // Add all the lights up.
-                vec4 VColor = ColorAmbient + ColorDiffuse + ColorSpecular;
+                VColor = ColorAmbient + ColorDiffuse + ColorSpecular;
                 VColor.a = 1.0;
+
+                vec3 LightReflected = reflect(VPosEye, N);
+                // LightReflected = vec3(UMatCameraRot * vec4(LightReflected, 0.0));
+                LightReflected = vec3(UMatCameraRot * UMatViewInv * vec4(LightReflected, 0.0));
+                VColor = textureCube(USamplerCube, LightReflected);
+                VColor.a = 1.0;
+
+                if (USkybox)
+                {
+                    VColor = vec4(0.4, 0.2, 0.2, 1.0);
+                    VColor = textureCube(USamplerCube, VTextureCoordSkybox);
+                }
 
                 gl_FragColor = VColor;
             }
@@ -72,6 +103,7 @@
 
         <script type="text/javascript" src="javascript/webgl-utils.js"></script>
         <script type="text/javascript" src="javascript/glmathlib.js"></script>
+        <script type="text/javascript" src="javascript/mesh.js"></script>
         <script type="text/javascript" src="javascript/main.js"></script>
     </body>
 </html>

@@ -23,144 +23,15 @@ var vertexColorAttribute;
 var Buffer = new function(){};
 Buffer.cube = {};
 Buffer.sphere = {};
+Buffer.skybox = {};
 
-// Vertex Class
-var Vertex = new function(){};
-
-// Vertex coordinates.
-Vertex.cube = {};
-Vertex.cube.vertices = [
-    // Front face
-    -1.0, -1.0,  1.0,
-    1.0, -1.0,  1.0,
-    1.0,  1.0,  1.0,
-    -1.0,  1.0,  1.0,
-
-    // Back face
-    -1.0, -1.0, -1.0,
-    -1.0,  1.0, -1.0,
-    1.0,  1.0, -1.0,
-    1.0, -1.0, -1.0,
-
-    // Top face
-    -1.0,  1.0, -1.0,
-    -1.0,  1.0,  1.0,
-    1.0,  1.0,  1.0,
-    1.0,  1.0, -1.0,
-
-    // Bottom face
-    -1.0, -1.0, -1.0,
-    1.0, -1.0, -1.0,
-    1.0, -1.0,  1.0,
-    -1.0, -1.0,  1.0,
-
-    // Right face
-    1.0, -1.0, -1.0,
-    1.0,  1.0, -1.0,
-    1.0,  1.0,  1.0,
-    1.0, -1.0,  1.0,
-
-    // Left face
-    -1.0, -1.0, -1.0,
-    -1.0, -1.0,  1.0,
-    -1.0,  1.0,  1.0,
-    -1.0,  1.0, -1.0
-];
-Vertex.cube.normals = [
-    // Front face
-    0.0, 0.0, 1.0,
-    0.0, 0.0, 1.0,
-    0.0, 0.0, 1.0,
-    0.0, 0.0, 1.0,
-
-    // Back Face
-    0.0, 0.0, -1.0,
-    0.0, 0.0, -1.0,
-    0.0, 0.0, -1.0,
-    0.0, 0.0, -1.0,
-
-    // Top Face
-    0.0, 1.0, 0.0,
-    0.0, 1.0, 0.0,
-    0.0, 1.0, 0.0,
-    0.0, 1.0, 0.0,
-
-    // Bottom face
-    0.0, -1.0, 0.0,
-    0.0, -1.0, 0.0,
-    0.0, -1.0, 0.0,
-    0.0, -1.0, 0.0,
-
-    // Right face
-    1.0, 0.0, 0.0,
-    1.0, 0.0, 0.0,
-    1.0, 0.0, 0.0,
-    1.0, 0.0, 0.0,
-
-    // Left face
-    -1.0, 0.0, 0.0,
-    -1.0, 0.0, 0.0,
-    -1.0, 0.0, 0.0,
-    -1.0, 0.0, 0.0,
-];
-
-Vertex.cube.indices = [
-    0,  1,  2,      0,  2,  3,    // front
-    4,  5,  6,      4,  6,  7,    // back
-    8,  9,  10,     8,  10, 11,   // top
-    12, 13, 14,     12, 14, 15,   // bottom
-    16, 17, 18,     16, 18, 19,   // right
-    20, 21, 22,     20, 22, 23    // left
-];
-
-// Vertex Coordinates for Sphere (or tetrahedron)
-Vertex.sphere = {}
-Vertex.sphere.vertices = [];
-Vertex.sphere.normals = [];
-Vertex.sphere.indices = [];
-
-function tetrahedron(a, b, c, d, n) {
-    function triangle(a, b, c) {
-        // Vertices
-        Vertex.sphere.indices.push(Vertex.sphere.vertices.length/3);
-        Vertex.sphere.vertices = Vertex.sphere.vertices.concat(a);
-        Vertex.sphere.indices.push(Vertex.sphere.vertices.length/3);
-        Vertex.sphere.vertices = Vertex.sphere.vertices.concat(b);
-        Vertex.sphere.indices.push(Vertex.sphere.vertices.length/3);
-        Vertex.sphere.vertices = Vertex.sphere.vertices.concat(c);
-
-        // Normals
-        Vertex.sphere.normals = Vertex.sphere.normals.concat(a);
-        Vertex.sphere.normals = Vertex.sphere.normals.concat(b);
-        Vertex.sphere.normals = Vertex.sphere.normals.concat(c);
-    }
-    function divideTriangle(a, b, c, count) {
-        if (count > 0) {
-            var ab = GLMathLib.normalize(GLMathLib.mid(a, b));
-            var ac = GLMathLib.normalize(GLMathLib.mid(a, c));
-            var bc = GLMathLib.normalize(GLMathLib.mid(b, c));
-            divideTriangle(a, ab, ac, count - 1);
-            divideTriangle(ab, b, bc, count - 1);
-            divideTriangle(bc, c, ac, count - 1);
-            divideTriangle(ab, bc, ac, count - 1);
-        } else {
-            triangle (a, b, c);
-        }
-    }
-    divideTriangle(a, b, c, n);
-    divideTriangle(d, c, b, n);
-    divideTriangle(a, d, b, n);
-    divideTriangle(a, c, d, n);
-}
-
-var circleSubdivisions = 5;
-var va = GLMathLib.vec3(0, 0, -1);
-var vb = GLMathLib.vec3(0.0, 0.942809, 0.333333);
-var vc = GLMathLib.vec3(-0.816497, -0.471405, 0.333333);
-var vd = GLMathLib.vec3(0.816497, -0.471405, 0.333333);
+// Create a cube and sphere mesh object
+var Cube = MeshLib.createCube();
+var Sphere = MeshLib.createSphere(5);
+var Skybox = MeshLib.createCubeMap(500.0);
 
 // Lighting and shading properties.
-var LightPosition = GLMathLib.vec3(0.0, 3.0, 3.0);
+var LightPosition = GLMathLib.vec4(1.0, 5.0, 5.0, 0.0);
 
 var LightAmbient = GLMathLib.vec4(0.1, 0.1, 0.1, 1.0);
 var LightDiffuse = GLMathLib.vec4(1.0, 1.0, 1.0, 1.0);
@@ -172,16 +43,20 @@ var MaterialSpecular = GLMathLib.vec4(1.0, 1.0, 1.0, 1.0);
 
 var AmbientProduct, DiffuseProduct, SpecularProduct;
 
-// Viewport properties.
+// Viewport and camera properties.
 var yFOV = 65.0;
 var aspectRatio = 16.0/9.0;
 var nearClipPlane = 0.3;
 var farClipPlane = 1000.0;
 
-var MatModel;
-var MatView;
-var MatProj;
-var MatModelView;
+var Camera = {
+    at : GLMathLib.vec3(0.0, 0.0, 0.0),
+    eye : GLMathLib.vec3(0.0, 1.0, 10.0),
+    up : GLMathLib.vec3(0.0, 1.0, 0.0),
+};
+
+var MatModel, MatView, MatProj, MatModelView;
+var MatNormal;
 
 var angle = 0;
 
@@ -235,7 +110,7 @@ function initShaders() {
         console.log("Unable to initialize the shader program!");
     }
 
-    // Activate the shader?
+    // Activate the shader.
     gl.useProgram(shaderProgram);
 }
 
@@ -244,47 +119,123 @@ function initShaderVar() {
     // Attribute variables.
     shaderVar["AVertexPosition"] = gl.getAttribLocation(shaderProgram, "AVertexPosition");
     shaderVar["AVertexNormal"] = gl.getAttribLocation(shaderProgram, "AVertexNormal");
+    shaderVar["ATextureCoord"] = gl.getAttribLocation(shaderProgram, "ATextureCoord");
 
     // Uniform variables.
+    shaderVar["USkybox"] = gl.getUniformLocation(shaderProgram, "USkybox");
     shaderVar["ULightPosition"] = gl.getUniformLocation(shaderProgram, "ULightPosition");
+    shaderVar["UCamPosition"] = gl.getUniformLocation(shaderProgram, "UCamPosition");
+
     shaderVar["UAmbientProduct"] = gl.getUniformLocation(shaderProgram, "UAmbientProduct");
     shaderVar["UDiffuseProduct"] = gl.getUniformLocation(shaderProgram, "UDiffuseProduct");
     shaderVar["USpecularProduct"] = gl.getUniformLocation(shaderProgram, "USpecularProduct");
+
+    shaderVar["USamplerCube"] = gl.getUniformLocation(shaderProgram, "USamplerCube");
+
     shaderVar["UMatModel"] = gl.getUniformLocation(shaderProgram, "UMatModel");
-    shaderVar["UMatModelView"] = gl.getUniformLocation(shaderProgram, "UMatModelView");
+    shaderVar["UMatView"] = gl.getUniformLocation(shaderProgram, "UMatView");
+    shaderVar["UMatViewInv"] = gl.getUniformLocation(shaderProgram, "UMatViewInv");
     shaderVar["UMatProj"] = gl.getUniformLocation(shaderProgram, "UMatProj");
+    shaderVar["UMatNormal"] = gl.getUniformLocation(shaderProgram, "UMatNormal");
+    shaderVar["UMatCameraRot"] = gl.getUniformLocation(shaderProgram, "UMatCameraRot");
 }
 
 // Initialize Buffers.
 function initBuffers() {
+    // Create buffers for the skybox.
+    Buffer.skybox.vertices = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.skybox.vertices);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Skybox.vertices), gl.STATIC_DRAW);
+    Buffer.skybox.indices = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.skybox.indices);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(Skybox.indices), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
     // Create buffers for the cube.
     Buffer.cube.vertices = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.vertices);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Vertex.cube.vertices), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Cube.vertices), gl.STATIC_DRAW);
     Buffer.cube.normals = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.normals);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Vertex.cube.normals), gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Cube.normals), gl.STATIC_DRAW);
     Buffer.cube.indices = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.cube.indices);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(Vertex.cube.indices), gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(Cube.indices), gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
     // Create buffers for the sphere.
     Buffer.sphere.vertices = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.vertices);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Vertex.sphere.vertices), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Sphere.vertices), gl.STATIC_DRAW);
     Buffer.sphere.normals = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.normals);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Vertex.sphere.normals), gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Sphere.normals), gl.STATIC_DRAW);
     Buffer.sphere.indices = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.sphere.indices);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(Vertex.sphere.indices), gl.STATIC_DRAW);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(Sphere.indices), gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 }
+
+//
+// Initialize the cube map. Code inspiration from
+// http://hristo.oskov.com/projects/cs418/mp3/js/mp3.js and, in
+// a way, three.js's implementation a skybox.
+//
+function initSkybox(string) {
+    gl.activeTexture(gl.TEXTURE0);
+
+    Skybox.texture = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
+
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    var cubeFaces = [
+        ["assets/skybox/" + string + "/posx.jpg", gl.TEXTURE_CUBE_MAP_POSITIVE_X],
+        ["assets/skybox/" + string + "/negx.jpg", gl.TEXTURE_CUBE_MAP_NEGATIVE_X],
+        ["assets/skybox/" + string + "/posy.jpg", gl.TEXTURE_CUBE_MAP_POSITIVE_Y],
+        ["assets/skybox/" + string + "/negy.jpg", gl.TEXTURE_CUBE_MAP_NEGATIVE_Y],
+        ["assets/skybox/" + string + "/posz.jpg", gl.TEXTURE_CUBE_MAP_POSITIVE_Z],
+        ["assets/skybox/" + string + "/negz.jpg", gl.TEXTURE_CUBE_MAP_NEGATIVE_Z]
+    ];
+
+    for (i = 0; i < cubeFaces.length; i++) {
+        var image = new Image();
+        image.onload = function(texture, face, image) {
+            return function() {
+                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
+                gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture)
+                gl.texImage2D(face, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+                gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+            }
+        } (Skybox.texture, cubeFaces[i][1], image);
+        image.src = cubeFaces[i][0];
+    }
+}
+
+// Draw texture test.
+// function createTexture(img) {
+//     var result = gl.createTexture();
+//     gl.activeTexture(gl.TEXTURE0);
+//     gl.uniform1i(shaderVar["USampler"], 0);
+//     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+//     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+    
+//     var image = new Image();
+//     image.onload = function(texture, image) {
+//         return function() {
+//             gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+//             gl.bindTexture(gl.TEXTURE_2D, texture);
+//             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+//             gl.generateMipmap(gl.TEXTURE_2D);
+//             gl.bindTexture(gl.TEXTURE_2D, null);
+//         }
+//     } (result, image);
+//     image.src = img;
+//     return result;
+// }
 
 // Draw the Scene.
 function initScene() {
@@ -292,27 +243,32 @@ function initScene() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.clearColor(0.15, 0.15, 0.15, 1.0);
 
+    // Create the transformation matrix and calculate other matrices.
+    MatModel = GLMathLib.mat4(1.0);
+    MatView = GLMathLib.lookAt(Camera.at, Camera.eye, Camera.up);
+    MatProj = GLMathLib.perspective(yFOV, aspectRatio, nearClipPlane, farClipPlane);
+    MatModelView = GLMathLib.mult(MatView, MatModel);
+    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatModelView));
+
+    // Pass the transformation matrix components to the shaders.
+    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatModel)));
+    gl.uniformMatrix4fv(shaderVar["UMatView"], false, new Float32Array(GLMathLib.flatten(MatView)));
+    gl.uniformMatrix4fv(shaderVar["UMatProj"], false, new Float32Array(GLMathLib.flatten(MatProj)));
+    gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
+
     // Create the lighting variables.
     AmbientProduct = GLMathLib.mult(LightAmbient, MaterialAmbient);
     DiffuseProduct = GLMathLib.mult(LightDiffuse, MaterialDiffuse);
     SpecularProduct = GLMathLib.mult(LightSpecular, MaterialSpecular);
 
     // Pass the lighting variables to the shaders.
-    gl.uniform3fv(shaderVar["ULightPosition"], new Float32Array(LightPosition));
     gl.uniform4fv(shaderVar["UAmbientProduct"], new Float32Array(AmbientProduct));
     gl.uniform4fv(shaderVar["UDiffuseProduct"], new Float32Array(DiffuseProduct));
     gl.uniform4fv(shaderVar["USpecularProduct"], new Float32Array(SpecularProduct));
 
-    // Create the transformation matrix.
-    MatModel = GLMathLib.mat4(1.0);
-    MatView = GLMathLib.lookAt(GLMathLib.vec3(0.0, 0.0, 0.0), GLMathLib.vec3(0.0, 0.0, 7.0), GLMathLib.vec3(0.0, 1.0, 0.0));
-    MatProj = GLMathLib.perspective(yFOV, aspectRatio, nearClipPlane, farClipPlane);
-    MatModelView = GLMathLib.mult(MatView, MatModel);
-
-    // Pass the transformation matrix components to the shaders.
-    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatModel)));
-    gl.uniformMatrix4fv(shaderVar["UMatModelView"], false, new Float32Array(GLMathLib.flatten(MatModelView)));
-    gl.uniformMatrix4fv(shaderVar["UMatProj"], false, new Float32Array(GLMathLib.flatten(MatProj)));
+    // Enable Attribute Pointers
+    gl.enableVertexAttribArray(shaderVar["AVertexPosition"]);
+    gl.enableVertexAttribArray(shaderVar["AVertexNormal"]);
 }
 
 // Function for initializing everything.
@@ -335,8 +291,6 @@ function init() {
         gl.viewport(0, 0, canvas.width, canvas.height);         // Make the viewport adhere to the canvas size.
     }
 
-    tetrahedron(va, vb, vc, vd, circleSubdivisions);
-
     // Initialize the shaders.
     initShaders();
 
@@ -346,40 +300,88 @@ function init() {
     // Initialize the buffers.
     initBuffers();
 
+    // Initialize the skybox.
+    initSkybox("Yokohama3");
+
     // Draw the initial scene.
     initScene();
 }
 
 function render() {
-    // Clear the color as well as the depth buffer.
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
-    // Enable pointers.
-    gl.enableVertexAttribArray(shaderVar["AVertexPosition"]);
-    gl.enableVertexAttribArray(shaderVar["AVertexNormal"]);
+    var MatCameraRot = GLMathLib.mat4(1.0);
+    MatCameraRot = GLMathLib.rotate(MatCameraRot, angle/5.0, GLMathLib.vec3(0, 1, 0));
+    gl.uniformMatrix4fv(shaderVar["UMatCameraRot"], false, new Float32Array(GLMathLib.flatten(MatCameraRot)));
+    var MatCameraRotOpp = GLMathLib.mat4(1.0);
+    MatCameraRotOpp = GLMathLib.rotate(MatCameraRotOpp, -angle/5.0, GLMathLib.vec3(0, 1, 0));
 
-    // Draw cube.
+    // Update general uniforms.
+    var NewCameraPosition = GLMathLib.mult(MatCameraRotOpp, GLMathLib.vec4(Camera.eye, 0.0));
+    gl.uniform4fv(shaderVar["UCamPosition"], new Float32Array(NewCameraPosition));
+    gl.uniformMatrix4fv(shaderVar["UMatViewInv"], false, new Float32Array(GLMathLib.flatten(GLMathLib.inverse(MatView))));
+
+    ////////////////////////////////////////////////////////////////
+    // Draw skybox.
+
+    gl.depthMask(false);
+    gl.uniform1i(shaderVar["USkybox"], true);
 
     // Rebind buffers.
-    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.vertices);
+    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.skybox.vertices);
     gl.vertexAttribPointer(shaderVar["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.normals);
-    gl.vertexAttribPointer(shaderVar["AVertexNormal"], 3, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.cube.indices);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.skybox.indices);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
+    gl.uniform1i(gl.getUniformLocation(shaderProgram, "USamplerCube"), 0);
 
     // Apply transformations.
     MatModel = GLMathLib.mat4(1.0);
-    MatModel = GLMathLib.rotate(MatModel, angle/3, GLMathLib.vec3(1, 0, 0));
-    MatModel = GLMathLib.rotate(MatModel, angle/3, GLMathLib.vec3(0, 1, 0));
-    MatModel = GLMathLib.translate(MatModel, GLMathLib.vec3(3, 0, 0));
+    MatModel = GLMathLib.mult(MatCameraRotOpp, MatModel);
     MatModelView = GLMathLib.mult(MatView, MatModel);
+    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatModel));
+
+    // Update specific uniforms.
     gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatModel)));
     gl.uniformMatrix4fv(shaderVar["UMatModelView"], false, new Float32Array(GLMathLib.flatten(MatModelView)));
+    gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
 
-    gl.drawElements(gl.TRIANGLES, Vertex.cube.indices.length, gl.UNSIGNED_SHORT, 0);
-    gl.disableVertexAttribArray;
+    // Render.
+    gl.drawElements(gl.TRIANGLES, Skybox.indices.length, gl.UNSIGNED_SHORT, 0);
 
+    gl.uniform1i(shaderVar["USkybox"], false);
+    gl.depthMask(true);
+
+    ////////////////////////////////////////////////////////////////
+    // Draw cube.
+
+    // // Rebind buffers.
+    // gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.vertices);
+    // gl.vertexAttribPointer(shaderVar["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
+    // gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.normals);
+    // gl.vertexAttribPointer(shaderVar["AVertexNormal"], 3, gl.FLOAT, false, 0, 0);
+    // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.cube.indices);
+    // // gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
+    // // gl.uniform1i(gl.getUniformLocation(shaderProgram, "USamplerCube"), 0);
+    // // gl.uniform1i(shaderVar["USkybox"], false);
+
+    // // Apply transformations.
+    // MatModel = GLMathLib.mat4(1.0);
+    // // MatModel = GLMathLib.rotate(MatModel, angle/3, GLMathLib.vec3(1, 0, 0));
+    // // MatModel = GLMathLib.rotate(MatModel, angle/3, GLMathLib.vec3(0, 1, 0));
+    // // MatModel = GLMathLib.translate(MatModel, GLMathLib.vec3(3, 0, 0));
+    // // Camera Rotation Matrix
+    // MatModel = GLMathLib.mult(MatCameraRot, MatModel);
+    // MatModelView = GLMathLib.mult(MatView, MatModel);
+    // MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatModelView));
+    // gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatModel)));
+    // gl.uniformMatrix4fv(shaderVar["UMatModelView"], false, new Float32Array(GLMathLib.flatten(MatModelView)));
+    // gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
+
+    // // Render.
+    // gl.drawElements(gl.TRIANGLES, Cube.indices.length, gl.UNSIGNED_SHORT, 0);
+
+    ////////////////////////////////////////////////////////////////
     // Draw Sphere
 
     // Rebind Buffers
@@ -388,22 +390,28 @@ function render() {
     gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.normals);
     gl.vertexAttribPointer(shaderVar["AVertexNormal"], 3, gl.FLOAT, false, 0, 0);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.sphere.indices);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
 
     MatModel = GLMathLib.mat4(1.0);
-    MatModel = GLMathLib.scale(MatModel, GLMathLib.vec3(1.5, 1.5, 1.5));
-    MatModel = GLMathLib.rotate(MatModel, angle, GLMathLib.vec3(1, 0, 0));
-    MatModel = GLMathLib.rotate(MatModel, angle, GLMathLib.vec3(0, 1, 0));
-    MatModel = GLMathLib.translate(MatModel, GLMathLib.vec3(-3, 0, 0));
-    MatModel = GLMathLib.translate(MatModel, GLMathLib.vec3(0, Math.sin(angle/60.0)*2, 0));
+    MatModel = GLMathLib.scale(MatModel, GLMathLib.vec3(2, 2, 2));
+    // MatModel = GLMathLib.rotate(MatModel, angle, GLMathLib.vec3(1, 0, 0));
+    // MatModel = GLMathLib.rotate(MatModel, angle, GLMathLib.vec3(0, 1, 0));
+    // MatModel = GLMathLib.translate(MatModel, GLMathLib.vec3(7 * Math.sin(angle/50.0), 0, 0));
+    // MatModel = GLMathLib.translate(MatModel, GLMathLib.vec3(0, 0, 7 * Math.sin(angle/50.0)));
+    // Camera Rotation Matrix
+    // MatModel = GLMathLib.mult(MatCameraRot, MatModel);
     MatModelView = GLMathLib.mult(MatView, MatModel);
+    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatModelView));
     gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatModel)));
     gl.uniformMatrix4fv(shaderVar["UMatModelView"], false, new Float32Array(GLMathLib.flatten(MatModelView)));
+    gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
 
-    gl.drawElements(gl.TRIANGLES, Vertex.sphere.indices.length, gl.UNSIGNED_SHORT, 0);
-    gl.disableVertexAttribArray;
+    // Render.
+    gl.drawElements(gl.TRIANGLES, Sphere.indices.length, gl.UNSIGNED_SHORT, 0);
 
     angle += 1;
 
+    // Render loop.
     window.requestAnimFrame(render, canvas);
 }
 

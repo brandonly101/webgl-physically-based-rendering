@@ -29,7 +29,9 @@ var GLMathLib = {
     // Create Vectors or Matrices
     vec3: function() {
         var args = Array.prototype.slice.call(arguments);
-        if (args.length == 3) {
+        if (args.length == 1) {
+            return [args[0][0], args[0][1], args[0][2]];
+        } else if (args.length == 3) {
             return [args[0], args[1], args[2]];
         } else {
             return [0, 0, 0];
@@ -116,10 +118,10 @@ var GLMathLib = {
             result = this.vec4();
             for (i = 0; i < 4; i++) {
                 result[i] = (
-                    v[i]*u[i*4] +
-                    v[i+1]*u[i*4+1] +
-                    v[i+2]*u[i*4+2] +
-                    v[i+3]*u[i*4+3]
+                    u[i*4+0]*v[0] +
+                    u[i*4+1]*v[1] +
+                    u[i*4+2]*v[2] +
+                    u[i*4+3]*v[3]
                 );
             }
         } else if (u.length == 16 && v.length == 16) {
@@ -189,8 +191,135 @@ var GLMathLib = {
     },
 
     // Invert the matrix.
-    inverse: function(arg) {
-        result = [];
+    // I actually cheated a little and grabbed a 4x4 invert function from
+    // here ... http://stackoverflow.com/questions/1148309/inverting-a-4x4-matrix
+    inverse: function(m) {
+        var result = this.mat4(0);
+        var inv = this.mat4(0);
+        var det;
+
+        inv[0] = m[5]  * m[10] * m[15] - 
+                 m[5]  * m[11] * m[14] - 
+                 m[9]  * m[6]  * m[15] + 
+                 m[9]  * m[7]  * m[14] +
+                 m[13] * m[6]  * m[11] - 
+                 m[13] * m[7]  * m[10];
+
+        inv[4] = -m[4]  * m[10] * m[15] + 
+                  m[4]  * m[11] * m[14] + 
+                  m[8]  * m[6]  * m[15] - 
+                  m[8]  * m[7]  * m[14] - 
+                  m[12] * m[6]  * m[11] + 
+                  m[12] * m[7]  * m[10];
+
+        inv[8] = m[4]  * m[9] * m[15] - 
+                 m[4]  * m[11] * m[13] - 
+                 m[8]  * m[5] * m[15] + 
+                 m[8]  * m[7] * m[13] + 
+                 m[12] * m[5] * m[11] - 
+                 m[12] * m[7] * m[9];
+
+        inv[12] = -m[4]  * m[9] * m[14] + 
+                   m[4]  * m[10] * m[13] +
+                   m[8]  * m[5] * m[14] - 
+                   m[8]  * m[6] * m[13] - 
+                   m[12] * m[5] * m[10] + 
+                   m[12] * m[6] * m[9];
+
+        inv[1] = -m[1]  * m[10] * m[15] + 
+                  m[1]  * m[11] * m[14] + 
+                  m[9]  * m[2] * m[15] - 
+                  m[9]  * m[3] * m[14] - 
+                  m[13] * m[2] * m[11] + 
+                  m[13] * m[3] * m[10];
+
+        inv[5] = m[0]  * m[10] * m[15] - 
+                 m[0]  * m[11] * m[14] - 
+                 m[8]  * m[2] * m[15] + 
+                 m[8]  * m[3] * m[14] + 
+                 m[12] * m[2] * m[11] - 
+                 m[12] * m[3] * m[10];
+
+        inv[9] = -m[0]  * m[9] * m[15] + 
+                  m[0]  * m[11] * m[13] + 
+                  m[8]  * m[1] * m[15] - 
+                  m[8]  * m[3] * m[13] - 
+                  m[12] * m[1] * m[11] + 
+                  m[12] * m[3] * m[9];
+
+        inv[13] = m[0]  * m[9] * m[14] - 
+                  m[0]  * m[10] * m[13] - 
+                  m[8]  * m[1] * m[14] + 
+                  m[8]  * m[2] * m[13] + 
+                  m[12] * m[1] * m[10] - 
+                  m[12] * m[2] * m[9];
+
+        inv[2] = m[1]  * m[6] * m[15] - 
+                 m[1]  * m[7] * m[14] - 
+                 m[5]  * m[2] * m[15] + 
+                 m[5]  * m[3] * m[14] + 
+                 m[13] * m[2] * m[7] - 
+                 m[13] * m[3] * m[6];
+
+        inv[6] = -m[0]  * m[6] * m[15] + 
+                  m[0]  * m[7] * m[14] + 
+                  m[4]  * m[2] * m[15] - 
+                  m[4]  * m[3] * m[14] - 
+                  m[12] * m[2] * m[7] + 
+                  m[12] * m[3] * m[6];
+
+        inv[10] = m[0]  * m[5] * m[15] - 
+                  m[0]  * m[7] * m[13] - 
+                  m[4]  * m[1] * m[15] + 
+                  m[4]  * m[3] * m[13] + 
+                  m[12] * m[1] * m[7] - 
+                  m[12] * m[3] * m[5];
+
+        inv[14] = -m[0]  * m[5] * m[14] + 
+                   m[0]  * m[6] * m[13] + 
+                   m[4]  * m[1] * m[14] - 
+                   m[4]  * m[2] * m[13] - 
+                   m[12] * m[1] * m[6] + 
+                   m[12] * m[2] * m[5];
+
+        inv[3] = -m[1] * m[6] * m[11] + 
+                  m[1] * m[7] * m[10] + 
+                  m[5] * m[2] * m[11] - 
+                  m[5] * m[3] * m[10] - 
+                  m[9] * m[2] * m[7] + 
+                  m[9] * m[3] * m[6];
+
+        inv[7] = m[0] * m[6] * m[11] - 
+                 m[0] * m[7] * m[10] - 
+                 m[4] * m[2] * m[11] + 
+                 m[4] * m[3] * m[10] + 
+                 m[8] * m[2] * m[7] - 
+                 m[8] * m[3] * m[6];
+
+        inv[11] = -m[0] * m[5] * m[11] + 
+                   m[0] * m[7] * m[9] + 
+                   m[4] * m[1] * m[11] - 
+                   m[4] * m[3] * m[9] - 
+                   m[8] * m[1] * m[7] + 
+                   m[8] * m[3] * m[5];
+
+        inv[15] = m[0] * m[5] * m[10] - 
+                  m[0] * m[6] * m[9] - 
+                  m[4] * m[1] * m[10] + 
+                  m[4] * m[2] * m[9] + 
+                  m[8] * m[1] * m[6] - 
+                  m[8] * m[2] * m[5];
+
+        det = m[0] * inv[0] + m[1] * inv[4] + m[2] * inv[8] + m[3] * inv[12];
+
+        if (det == 0) {
+            return null;
+        }
+        det = 1.0 / det;
+
+        for (i = 0; i < 16; i++)
+            result[i] = inv[i] * det;
+
         return result;
     },
 
@@ -277,10 +406,8 @@ var GLMathLib = {
         matrix[10] = -ateye[2];
 
         // Translate the camera (or eye) from origin.
-        var translate = this.translate(this.mat4(1), this.vec3(-eye[0], -eye[1], -eye[2]));
-
-        // Multiply the two and return.
-        return this.mult(translate, matrix);
+        var result = this.translate(matrix, this.vec3(-eye[0], -eye[1], -eye[2]));
+        return result;
     },
 
     // Create a perspective matrix, with the inputted parameters.
