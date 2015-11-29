@@ -18,27 +18,27 @@
 
             uniform bool USkybox;
             uniform vec4 UCamPosition;
+            uniform vec4 UCamPosSky;
             uniform vec4 ULightPosition;
             uniform mat4 UMatModel, UMatView, UMatProj;
             uniform mat4 UMatNormal;
 
-            varying vec3 L, N, E;
-            varying vec3 VPosEye;
+            varying vec3 L, N, E, I;
             varying vec3 VTextureCoordSkybox;
 
             void main(void) {
 
                 // Calculate the position and normals to pass into the fragment shader.
-                vec3 PosTransform = vec3(UMatView * UMatModel * vec4(AVertexPosition, 1.0));
-                vec3 NormTransform = vec3(UMatView * UMatModel * vec4(AVertexNormal, 0.0));
-                vec3 LightTransform = (UMatView * ULightPosition).xyz;
-
-                // Calculate environment mapping variables.
-                VPosEye = normalize(PosTransform);
+                vec3 PosTransform = vec3(UMatModel * vec4(AVertexPosition, 1.0));
+                vec3 NormTransform = vec3(UMatNormal * vec4(AVertexNormal, 0.0));
+                vec3 LightTransform = (ULightPosition).xyz;
 
                 L = normalize(LightTransform - PosTransform);
                 N = normalize(NormTransform);
-                E = normalize(-PosTransform);
+                E = normalize(UCamPosition.xyz - PosTransform);
+
+                // Calculate environment mapping variables.
+                I = normalize(PosTransform - UCamPosSky.xyz);
 
                 if (USkybox)
                 {
@@ -56,13 +56,14 @@
             precision mediump float;
 
             uniform bool USkybox;
+            uniform bool UEnvMap;
             uniform vec4 UAmbientProduct, UDiffuseProduct, USpecularProduct;
             uniform samplerCube USamplerCube;
             uniform mat4 UMatCameraRot;
             uniform mat4 UMatViewInv;
 
             varying vec3 L, N, E;
-            varying vec3 VPosEye;
+            varying vec3 I;
             varying vec3 VTextureCoordSkybox;
             varying vec4 VColor;
 
@@ -81,14 +82,14 @@
                 ColorSpecular = max(pow(max(dot(H, N), 0.0), 100.0) * USpecularProduct, 0.0);
 
                 // Add all the lights up.
-                VColor = ColorAmbient + ColorDiffuse + ColorSpecular;
+                VColor = (ColorAmbient + ColorDiffuse + ColorSpecular);
                 VColor.a = 1.0;
 
-                vec3 LightReflected = reflect(VPosEye, N);
-                // LightReflected = vec3(UMatCameraRot * vec4(LightReflected, 0.0));
-                LightReflected = vec3(UMatCameraRot * UMatViewInv * vec4(LightReflected, 0.0));
-                VColor = textureCube(USamplerCube, LightReflected);
-                VColor.a = 1.0;
+                vec3 LightReflected = reflect(I, N);
+                LightReflected = vec3(UMatCameraRot * vec4(LightReflected, 0.0));
+                // LightReflected = vec3(UMatCameraRot * UMatViewInv * vec4(LightReflected, 0.0));
+                VColor += VColor * textureCube(USamplerCube, LightReflected);
+                // VColor.a = 1.0;
 
                 if (USkybox)
                 {

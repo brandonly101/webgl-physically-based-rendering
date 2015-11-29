@@ -31,14 +31,14 @@ var Sphere = MeshLib.createSphere(5);
 var Skybox = MeshLib.createCubeMap(500.0);
 
 // Lighting and shading properties.
-var LightPosition = GLMathLib.vec4(1.0, 5.0, 5.0, 0.0);
+var LightPosition = GLMathLib.vec4(0.0, 25.0, 5.0, 0.0);
 
-var LightAmbient = GLMathLib.vec4(0.1, 0.1, 0.1, 1.0);
+var LightAmbient = GLMathLib.vec4(0.065, 0.065, 0.065, 1.0);
 var LightDiffuse = GLMathLib.vec4(1.0, 1.0, 1.0, 1.0);
 var LightSpecular = GLMathLib.vec4(1.0, 1.0, 1.0, 1.0);
 
 var MaterialAmbient = GLMathLib.vec4(1.0, 1.0, 1.0, 1.0);
-var MaterialDiffuse = GLMathLib.vec4(1.0, 0.8, 0.0, 1.0);
+var MaterialDiffuse = GLMathLib.vec4(0.75, 0.1, 0.0, 1.0);
 var MaterialSpecular = GLMathLib.vec4(1.0, 1.0, 1.0, 1.0);
 
 var AmbientProduct, DiffuseProduct, SpecularProduct;
@@ -123,8 +123,10 @@ function initShaderVar() {
 
     // Uniform variables.
     shaderVar["USkybox"] = gl.getUniformLocation(shaderProgram, "USkybox");
+    shaderVar["UEnvMap"] = gl.getUniformLocation(shaderProgram, "UEnvMap");
     shaderVar["ULightPosition"] = gl.getUniformLocation(shaderProgram, "ULightPosition");
     shaderVar["UCamPosition"] = gl.getUniformLocation(shaderProgram, "UCamPosition");
+    shaderVar["UCamPosSky"] = gl.getUniformLocation(shaderProgram, "UCamPosSky");
 
     shaderVar["UAmbientProduct"] = gl.getUniformLocation(shaderProgram, "UAmbientProduct");
     shaderVar["UDiffuseProduct"] = gl.getUniformLocation(shaderProgram, "UDiffuseProduct");
@@ -250,6 +252,10 @@ function initScene() {
     MatModelView = GLMathLib.mult(MatView, MatModel);
     MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatModelView));
 
+    // Pass some position variables to the shaders.
+    gl.uniform4fv(shaderVar["UCamPosition"], new Float32Array(GLMathLib.vec4(Camera.eye, 0.0)));
+    gl.uniform4fv(shaderVar["UCamPosSky"], new Float32Array(GLMathLib.vec4(Camera.eye, 0.0)));
+
     // Pass the transformation matrix components to the shaders.
     gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatModel)));
     gl.uniformMatrix4fv(shaderVar["UMatView"], false, new Float32Array(GLMathLib.flatten(MatView)));
@@ -311,8 +317,15 @@ function render() {
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
 
+    ////////////////////////////////////////////////////////////////
+    // Perform general setup.
+
+    // Create the camera rotation matrices.
     var MatCameraRot = GLMathLib.mat4(1.0);
     MatCameraRot = GLMathLib.rotate(MatCameraRot, angle/5.0, GLMathLib.vec3(0, 1, 0));
+    // var NewCameraEye = GLMathLib.mult(MatCameraRot, GLMathLib.vec4(Camera.eye, 0.0));
+    // MatView = GLMathLib.lookAt(Camera.at, GLMathLib.vec3(NewCameraEye), Camera.up);
+    // gl.uniformMatrix4fv(shaderVar["UMatView"], false, new Float32Array(GLMathLib.flatten(MatView)));    
     gl.uniformMatrix4fv(shaderVar["UMatCameraRot"], false, new Float32Array(GLMathLib.flatten(MatCameraRot)));
     var MatCameraRotOpp = GLMathLib.mat4(1.0);
     MatCameraRotOpp = GLMathLib.rotate(MatCameraRotOpp, -angle/5.0, GLMathLib.vec3(0, 1, 0));
@@ -321,6 +334,8 @@ function render() {
     var NewCameraPosition = GLMathLib.mult(MatCameraRotOpp, GLMathLib.vec4(Camera.eye, 0.0));
     gl.uniform4fv(shaderVar["UCamPosition"], new Float32Array(NewCameraPosition));
     gl.uniformMatrix4fv(shaderVar["UMatViewInv"], false, new Float32Array(GLMathLib.flatten(GLMathLib.inverse(MatView))));
+    var NewLightPosition = GLMathLib.mult(MatCameraRotOpp, LightPosition);
+    gl.uniform4fv(shaderVar["ULightPosition"], new Float32Array(NewLightPosition));
 
     ////////////////////////////////////////////////////////////////
     // Draw skybox.
@@ -336,15 +351,12 @@ function render() {
     gl.uniform1i(gl.getUniformLocation(shaderProgram, "USamplerCube"), 0);
 
     // Apply transformations.
-    MatModel = GLMathLib.mat4(1.0);
-    MatModel = GLMathLib.mult(MatCameraRotOpp, MatModel);
-    MatModelView = GLMathLib.mult(MatView, MatModel);
-    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatModel));
+    var MatSkybox = GLMathLib.mat4(1.0);
+    MatSkybox = GLMathLib.mult(MatCameraRotOpp, MatSkybox);
+    MatSkybox = GLMathLib.mult(MatModel, MatSkybox);
 
     // Update specific uniforms.
-    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatModel)));
-    gl.uniformMatrix4fv(shaderVar["UMatModelView"], false, new Float32Array(GLMathLib.flatten(MatModelView)));
-    gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
+    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatSkybox)));
 
     // Render.
     gl.drawElements(gl.TRIANGLES, Skybox.indices.length, gl.UNSIGNED_SHORT, 0);
@@ -355,31 +367,28 @@ function render() {
     ////////////////////////////////////////////////////////////////
     // Draw cube.
 
-    // // Rebind buffers.
-    // gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.vertices);
-    // gl.vertexAttribPointer(shaderVar["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
-    // gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.normals);
-    // gl.vertexAttribPointer(shaderVar["AVertexNormal"], 3, gl.FLOAT, false, 0, 0);
-    // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.cube.indices);
-    // // gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
-    // // gl.uniform1i(gl.getUniformLocation(shaderProgram, "USamplerCube"), 0);
-    // // gl.uniform1i(shaderVar["USkybox"], false);
+    // Rebind buffers.
+    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.vertices);
+    gl.vertexAttribPointer(shaderVar["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.normals);
+    gl.vertexAttribPointer(shaderVar["AVertexNormal"], 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.cube.indices);
+    // gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
 
-    // // Apply transformations.
-    // MatModel = GLMathLib.mat4(1.0);
-    // // MatModel = GLMathLib.rotate(MatModel, angle/3, GLMathLib.vec3(1, 0, 0));
-    // // MatModel = GLMathLib.rotate(MatModel, angle/3, GLMathLib.vec3(0, 1, 0));
-    // // MatModel = GLMathLib.translate(MatModel, GLMathLib.vec3(3, 0, 0));
-    // // Camera Rotation Matrix
-    // MatModel = GLMathLib.mult(MatCameraRot, MatModel);
-    // MatModelView = GLMathLib.mult(MatView, MatModel);
-    // MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatModelView));
-    // gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatModel)));
-    // gl.uniformMatrix4fv(shaderVar["UMatModelView"], false, new Float32Array(GLMathLib.flatten(MatModelView)));
-    // gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
+    // Apply transformations.
+    var MatCube = GLMathLib.mat4(1.0);
+    MatCube = GLMathLib.scale(MatCube, GLMathLib.vec3(1.3, 1.3, 1.3));
+    MatCube = GLMathLib.rotate(MatCube, angle/3, GLMathLib.vec3(1, 0, 0));
+    MatCube = GLMathLib.rotate(MatCube, angle/3, GLMathLib.vec3(0, 1, 0));
+    MatCube = GLMathLib.translate(MatCube, GLMathLib.vec3(3, 0, 0));
+    // Camera Rotation Matrix
+    MatCube = GLMathLib.mult(MatCameraRotOpp, MatCube);
+    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatCube));
+    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatCube)));
+    gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
 
-    // // Render.
-    // gl.drawElements(gl.TRIANGLES, Cube.indices.length, gl.UNSIGNED_SHORT, 0);
+    // Render.
+    gl.drawElements(gl.TRIANGLES, Cube.indices.length, gl.UNSIGNED_SHORT, 0);
 
     ////////////////////////////////////////////////////////////////
     // Draw Sphere
@@ -392,18 +401,17 @@ function render() {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.sphere.indices);
     gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
 
-    MatModel = GLMathLib.mat4(1.0);
-    MatModel = GLMathLib.scale(MatModel, GLMathLib.vec3(2, 2, 2));
+    var MatSphere = GLMathLib.mat4(1.0);
+    MatSphere = GLMathLib.scale(MatSphere, GLMathLib.vec3(2, 2, 2));
     // MatModel = GLMathLib.rotate(MatModel, angle, GLMathLib.vec3(1, 0, 0));
     // MatModel = GLMathLib.rotate(MatModel, angle, GLMathLib.vec3(0, 1, 0));
-    // MatModel = GLMathLib.translate(MatModel, GLMathLib.vec3(7 * Math.sin(angle/50.0), 0, 0));
-    // MatModel = GLMathLib.translate(MatModel, GLMathLib.vec3(0, 0, 7 * Math.sin(angle/50.0)));
+    // MatSphere = GLMathLib.translate(MatSphere, GLMathLib.vec3(7 * Math.sin(angle/50.0), 0, 0));
+    MatSphere = GLMathLib.translate(MatSphere, GLMathLib.vec3(-3, 0, 0));
+    // MatSphere = GLMathLib.translate(MatSphere, GLMathLib.vec3(0, 0, 7 * Math.sin(angle/50.0)));
     // Camera Rotation Matrix
-    // MatModel = GLMathLib.mult(MatCameraRot, MatModel);
-    MatModelView = GLMathLib.mult(MatView, MatModel);
-    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatModelView));
-    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatModel)));
-    gl.uniformMatrix4fv(shaderVar["UMatModelView"], false, new Float32Array(GLMathLib.flatten(MatModelView)));
+    MatSphere = GLMathLib.mult(MatCameraRotOpp, MatSphere);
+    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatSphere));
+    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatSphere)));
     gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
 
     // Render.
