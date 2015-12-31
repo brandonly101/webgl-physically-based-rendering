@@ -1,12 +1,16 @@
 // Copyright Brandon Ly 2015 all rights reserved.
 
-// Small library that handles the creation of meshes and its properties.
+// Small module that handles the creation of meshes and its properties.
 
 // Define a mesh object class.
 var Mesh = function() {
     this.vertices = [];
     this.normals = [];
     this.indices = [];
+
+    this.materialAmbient = [1.0, 1.0, 1.0, 1.0];
+    this.materialDiffuse = [0.75, 0.1, 0.0, 1.0];
+    this.materialSpecular = [1.0, 1.0, 1.0, 1.0];
 }
 
 var MeshLib = {
@@ -105,10 +109,10 @@ var MeshLib = {
         result.normals = [];
         result.indices = [];
 
-        var va = GLMathLib.vec3(0, 0, -1);
-        var vb = GLMathLib.vec3(0.0, 0.942809, 0.333333);
-        var vc = GLMathLib.vec3(-0.816497, -0.471405, 0.333333);
-        var vd = GLMathLib.vec3(0.816497, -0.471405, 0.333333);
+        var va = [0, 0, -1];
+        var vb = [0.0, 0.942809, 0.333333];
+        var vc = [-0.816497, -0.471405, 0.333333];
+        var vd = [0.816497, -0.471405, 0.333333];
 
         function tetrahedron(a, b, c, d, n) {
             function triangle(a, b, c) {

@@ -1,6 +1,7 @@
 // Copyright Brandon Ly 2015 all rights reserved.
 
 // WebGL Code to also learn about implementing physically based rendering.
+"use strict";
 
 // Get our HTML WebGL Canvas.
 var canvas = document.getElementById("webgl-canvas");
@@ -43,15 +44,9 @@ var MaterialSpecular = GLMathLib.vec4(1.0, 1.0, 1.0, 1.0);
 
 var AmbientProduct, DiffuseProduct, SpecularProduct;
 
-// Viewport and camera properties.
-var yFOV = 65.0;
-var aspectRatio = 16.0/9.0;
-var nearClipPlane = 0.3;
-var farClipPlane = 1000.0;
-
 var Camera = {
     at : GLMathLib.vec3(0.0, 0.0, 0.0),
-    eye : GLMathLib.vec3(0.0, 1.0, 10.0),
+    eye : GLMathLib.vec3(0.0, 0.0, 10.0),
     up : GLMathLib.vec3(0.0, 1.0, 0.0),
 };
 
@@ -59,6 +54,221 @@ var MatModel, MatView, MatProj, MatModelView;
 var MatNormal;
 
 var angle = 0;
+
+////////////////////////////////////////////////////////////////
+// Main init and render loops.
+////////////////////////////////////////////////////////////////
+
+// Init function.
+function init() {
+    // Initialize the canvas.
+    setCanvas();
+
+    // Get the context into a local gl and and a public gl.
+    // Use preserveDrawingBuffer:true to keep the drawing buffer after
+    // presentation. Fail if context is not found.
+    try {
+        gl = WebGLUtils.setupWebGL(canvas);
+    } catch (e) {
+        console.log("Getting context failed!");
+    }
+
+    // Continue if WebGL works on the browser.
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);                      // Set the canvas background to pure black.
+    gl.enable(gl.DEPTH_TEST);                               // Enable depth testing.
+    gl.depthFunc(gl.LEQUAL);                                // Make near things obscure far things.
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);    // Clear the color as well as the depth buffer.
+    gl.viewport(0, 0, canvas.width, canvas.height);         // Make the viewport adhere to the canvas size.
+
+    // Initialize the shaders.
+    initShaders();
+
+    // Initialize the shader variable locations.
+    initShaderVar();
+
+    // Initialize the buffers.
+    initBuffers();
+
+    // Initialize the skybox.
+    initSkybox("Yokohama3");
+
+    // Initialize some parameters for the scene.
+
+    // Clear the color as well as the depth buffer.
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clearColor(0.15, 0.15, 0.15, 1.0);
+
+    // Create the transformation matrix and calculate other matrices.
+    MatModel = GLMathLib.mat4(1.0);
+    MatView = GLMathLib.lookAt(Camera.at, Camera.eye, Camera.up);
+    MatProj = GLMathLib.perspective(Settings.yFOV, Settings.aspectRatio, Settings.nearClipPlane, Settings.farClipPlane);
+    MatModelView = GLMathLib.mult(MatView, MatModel);
+    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatModelView));
+
+    // Pass some position variables to the shaders.
+    gl.uniform4fv(shaderVar["UCamPosition"], new Float32Array(GLMathLib.vec4(Camera.eye, 0.0)));
+    gl.uniform4fv(shaderVar["UCamPosSky"], new Float32Array(GLMathLib.vec4(Camera.eye, 0.0)));
+
+    // Pass the transformation matrix components to the shaders.
+    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatModel)));
+    gl.uniformMatrix4fv(shaderVar["UMatView"], false, new Float32Array(GLMathLib.flatten(MatView)));
+    gl.uniformMatrix4fv(shaderVar["UMatProj"], false, new Float32Array(GLMathLib.flatten(MatProj)));
+    gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
+
+    // Create the lighting variables.
+    AmbientProduct = GLMathLib.mult(LightAmbient, MaterialAmbient);
+    DiffuseProduct = GLMathLib.mult(LightDiffuse, MaterialDiffuse);
+    SpecularProduct = GLMathLib.mult(LightSpecular, MaterialSpecular);
+
+    // Pass the lighting variables to the shaders.
+    gl.uniform4fv(shaderVar["UAmbientProduct"], new Float32Array(AmbientProduct));
+    gl.uniform4fv(shaderVar["UDiffuseProduct"], new Float32Array(DiffuseProduct));
+    gl.uniform4fv(shaderVar["USpecularProduct"], new Float32Array(SpecularProduct));
+
+    // Enable Attribute Pointers
+    gl.enableVertexAttribArray(shaderVar["AVertexPosition"]);
+    gl.enableVertexAttribArray(shaderVar["AVertexNormal"]);
+
+    Control.init();
+
+    Control.setMouseSensitivity(7.0);
+}
+
+// Render loop.
+function render() {
+    setCanvas();
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.viewport(0, 0, canvas.width, canvas.height);
+
+    ////////////////////////////
+    // Perform general setup.
+
+    // Create the camera rotation matrices.
+    var MatCameraRot = GLMathLib.mat4(1.0);
+    MatCameraRot = GLMathLib.rotate(MatCameraRot, -Control.angleY/Control.mouseSensitivity, GLMathLib.vec3(1, 0, 0));
+    MatCameraRot = GLMathLib.rotate(MatCameraRot, -Control.angleX/Control.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
+    gl.uniformMatrix4fv(shaderVar["UMatCameraRot"], false, new Float32Array(GLMathLib.flatten(MatCameraRot)));
+    var MatCameraRotOpp = GLMathLib.mat4(1.0);
+    MatCameraRotOpp = GLMathLib.rotate(MatCameraRotOpp, Control.angleX/Control.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
+    MatCameraRotOpp = GLMathLib.rotate(MatCameraRotOpp, Control.angleY/Control.mouseSensitivity, GLMathLib.vec3(1, 0, 0));
+
+    // Update general uniforms.
+    var NewCameraPosition = GLMathLib.mult(MatCameraRotOpp, GLMathLib.vec4(Camera.eye, 1.0));
+    gl.uniform4fv(shaderVar["UCamPosition"], new Float32Array(NewCameraPosition));
+    gl.uniformMatrix4fv(shaderVar["UMatViewInv"], false, new Float32Array(GLMathLib.flatten(GLMathLib.inverse(MatView))));
+    var NewLightPosition = GLMathLib.mult(MatCameraRotOpp, LightPosition);
+    gl.uniform4fv(shaderVar["ULightPosition"], new Float32Array(NewLightPosition));
+
+    ////////////////////////////
+    // Draw skybox.
+
+    gl.depthMask(false);
+    gl.uniform1i(shaderVar["USkybox"], true);
+
+    // Rebind buffers.
+    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.skybox.vertices);
+    gl.vertexAttribPointer(shaderVar["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.skybox.indices);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
+    gl.uniform1i(gl.getUniformLocation(shaderProgram, "USamplerCube"), 0);
+
+    // Apply transformations.
+    var MatSkybox = GLMathLib.mat4(1.0);
+    MatSkybox = GLMathLib.mult(MatCameraRotOpp, MatSkybox);
+    MatSkybox = GLMathLib.mult(MatModel, MatSkybox);
+
+    // Update specific uniforms.
+    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatSkybox)));
+
+    // Render.
+    gl.drawElements(gl.TRIANGLES, Skybox.indices.length, gl.UNSIGNED_SHORT, 0);
+
+    gl.uniform1i(shaderVar["USkybox"], false);
+    gl.depthMask(true);
+
+    ////////////////////////////
+    // Draw cube.
+
+    // Rebind buffers.
+    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.vertices);
+    gl.vertexAttribPointer(shaderVar["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.normals);
+    gl.vertexAttribPointer(shaderVar["AVertexNormal"], 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.cube.indices);
+
+    // Apply transformations.
+    var MatCube = GLMathLib.mat4(1.0);
+    MatCube = GLMathLib.scale(MatCube, GLMathLib.vec3(1.3, 1.3, 1.3));
+    MatCube = GLMathLib.rotate(MatCube, angle/3, GLMathLib.vec3(1, 0, 0));
+    MatCube = GLMathLib.rotate(MatCube, angle/3, GLMathLib.vec3(0, 1, 0));
+    MatCube = GLMathLib.translate(MatCube, GLMathLib.vec3(3, 0, 0));
+    // Camera Rotation Matrix
+    MatCube = GLMathLib.mult(MatCameraRotOpp, MatCube);
+    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatCube));
+    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatCube)));
+    gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
+
+    // Render.
+    gl.drawElements(gl.TRIANGLES, Cube.indices.length, gl.UNSIGNED_SHORT, 0);
+
+    ////////////////////////////
+    // Draw Sphere
+
+    // Rebind Buffers
+    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.vertices);
+    gl.vertexAttribPointer(shaderVar["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.normals);
+    gl.vertexAttribPointer(shaderVar["AVertexNormal"], 3, gl.FLOAT, false, 0, 0);
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.sphere.indices);
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
+
+    var MatSphere = GLMathLib.mat4(1.0);
+    MatSphere = GLMathLib.scale(MatSphere, GLMathLib.vec3(2, 2, 2));
+    MatSphere = GLMathLib.translate(MatSphere, GLMathLib.vec3(-3, 0, 0));
+    // Camera Rotation Matrix
+    MatSphere = GLMathLib.mult(MatCameraRotOpp, MatSphere);
+    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatSphere));
+    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatSphere)));
+    gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
+
+    // Render.
+    gl.drawElements(gl.TRIANGLES, Sphere.indices.length, gl.UNSIGNED_SHORT, 0);
+
+    // Angle
+    angle += 1.0;
+
+    // Call render again because we are looping it.
+    window.requestAnimFrame(render, canvas);
+}
+
+// Load it all!
+window.onload = function load() {
+    // Initialize the WebGL canvas.
+    init();
+
+    // Render the WebGL canvas.
+    render();
+};
+
+////////////////////////////////////////////////////////////////
+// Helper functions.
+////////////////////////////////////////////////////////////////
+
+// Initialize separate settings for the canvas.
+function setCanvas() {
+    var innerAspectRatio = window.innerWidth / window.innerHeight;
+    var canvasWidth, canvasHeight;
+    if (innerAspectRatio > Settings.aspectRatio) {
+        canvasHeight = window.innerHeight;
+        canvasWidth = canvasHeight * Settings.aspectRatio;
+    } else {
+        canvasWidth = window.innerWidth;
+        canvasHeight = canvasWidth * 1.0 / Settings.aspectRatio;
+    }
+    canvas.setAttribute("width", String(canvasWidth));
+    canvas.setAttribute("height", String(canvasHeight));
+}
 
 // Create and initialize shaders.
 function initShaders() {
@@ -142,40 +352,40 @@ function initShaderVar() {
     shaderVar["UMatCameraRot"] = gl.getUniformLocation(shaderProgram, "UMatCameraRot");
 }
 
+function createMeshBuffer(vertices, normals, indices) {
+    var buffer = {};
+
+    // Create vertices buffer.
+    buffer.vertices = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer.vertices);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+    // Create vertex indices buffer.
+    buffer.indices = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer.indices);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+
+    // Create normals buffer, if applicable.
+    if (normals != null) {
+        buffer.normals = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer.normals);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+    }
+
+    return buffer;
+}
+
 // Initialize Buffers.
 function initBuffers() {
     // Create buffers for the skybox.
-    Buffer.skybox.vertices = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.skybox.vertices);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Skybox.vertices), gl.STATIC_DRAW);
-    Buffer.skybox.indices = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.skybox.indices);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(Skybox.indices), gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    Buffer.skybox = createMeshBuffer(Skybox.vertices, null, Skybox.indices);
 
     // Create buffers for the cube.
-    Buffer.cube.vertices = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.vertices);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Cube.vertices), gl.STATIC_DRAW);
-    Buffer.cube.normals = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.normals);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Cube.normals), gl.STATIC_DRAW);
-    Buffer.cube.indices = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.cube.indices);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(Cube.indices), gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    Buffer.cube = createMeshBuffer(Cube.vertices, Cube.normals, Cube.indices);
 
     // Create buffers for the sphere.
-    Buffer.sphere.vertices = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.vertices);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Sphere.vertices), gl.STATIC_DRAW);
-    Buffer.sphere.normals = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.normals);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(Sphere.normals), gl.STATIC_DRAW);
-    Buffer.sphere.indices = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.sphere.indices);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(Sphere.indices), gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
+    Buffer.sphere = createMeshBuffer(Sphere.vertices, Sphere.normals, Sphere.indices);
 }
 
 //
@@ -238,196 +448,3 @@ function initSkybox(string) {
 //     image.src = img;
 //     return result;
 // }
-
-// Draw the Scene.
-function initScene() {
-    // Clear the color as well as the depth buffer.
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.clearColor(0.15, 0.15, 0.15, 1.0);
-
-    // Create the transformation matrix and calculate other matrices.
-    MatModel = GLMathLib.mat4(1.0);
-    MatView = GLMathLib.lookAt(Camera.at, Camera.eye, Camera.up);
-    MatProj = GLMathLib.perspective(yFOV, aspectRatio, nearClipPlane, farClipPlane);
-    MatModelView = GLMathLib.mult(MatView, MatModel);
-    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatModelView));
-
-    // Pass some position variables to the shaders.
-    gl.uniform4fv(shaderVar["UCamPosition"], new Float32Array(GLMathLib.vec4(Camera.eye, 0.0)));
-    gl.uniform4fv(shaderVar["UCamPosSky"], new Float32Array(GLMathLib.vec4(Camera.eye, 0.0)));
-
-    // Pass the transformation matrix components to the shaders.
-    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatModel)));
-    gl.uniformMatrix4fv(shaderVar["UMatView"], false, new Float32Array(GLMathLib.flatten(MatView)));
-    gl.uniformMatrix4fv(shaderVar["UMatProj"], false, new Float32Array(GLMathLib.flatten(MatProj)));
-    gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
-
-    // Create the lighting variables.
-    AmbientProduct = GLMathLib.mult(LightAmbient, MaterialAmbient);
-    DiffuseProduct = GLMathLib.mult(LightDiffuse, MaterialDiffuse);
-    SpecularProduct = GLMathLib.mult(LightSpecular, MaterialSpecular);
-
-    // Pass the lighting variables to the shaders.
-    gl.uniform4fv(shaderVar["UAmbientProduct"], new Float32Array(AmbientProduct));
-    gl.uniform4fv(shaderVar["UDiffuseProduct"], new Float32Array(DiffuseProduct));
-    gl.uniform4fv(shaderVar["USpecularProduct"], new Float32Array(SpecularProduct));
-
-    // Enable Attribute Pointers
-    gl.enableVertexAttribArray(shaderVar["AVertexPosition"]);
-    gl.enableVertexAttribArray(shaderVar["AVertexNormal"]);
-}
-
-// Function for initializing everything.
-function init() {
-    // Get the context into a local gl and and a public gl.
-    // Use preserveDrawingBuffer:true to keep the drawing buffer after
-    // presentation. Fail if context is not found.
-    try {
-        gl = WebGLUtils.setupWebGL(canvas);
-    } catch (e) {
-        console.log("Getting context failed!");
-    }
-
-    // Continue if WebGL works on the browser.
-    if (gl) {
-        gl.clearColor(0.0, 0.0, 0.0, 1.0);                      // Set the canvas background to pure black.
-        gl.enable(gl.DEPTH_TEST);                               // Enable depth testing.
-        gl.depthFunc(gl.LEQUAL);                                // Make near things obscure far things.
-        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);    // Clear the color as well as the depth buffer.
-        gl.viewport(0, 0, canvas.width, canvas.height);         // Make the viewport adhere to the canvas size.
-    }
-
-    // Initialize the shaders.
-    initShaders();
-
-    // Initialize the shader variable locations.
-    initShaderVar();
-
-    // Initialize the buffers.
-    initBuffers();
-
-    // Initialize the skybox.
-    initSkybox("Yokohama3");
-
-    // Draw the initial scene.
-    initScene();
-}
-
-function render() {
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);
-
-    ////////////////////////////////////////////////////////////////
-    // Perform general setup.
-
-    // Create the camera rotation matrices.
-    var MatCameraRot = GLMathLib.mat4(1.0);
-    MatCameraRot = GLMathLib.rotate(MatCameraRot, angle/5.0, GLMathLib.vec3(0, 1, 0));
-    // var NewCameraEye = GLMathLib.mult(MatCameraRot, GLMathLib.vec4(Camera.eye, 0.0));
-    // MatView = GLMathLib.lookAt(Camera.at, GLMathLib.vec3(NewCameraEye), Camera.up);
-    // gl.uniformMatrix4fv(shaderVar["UMatView"], false, new Float32Array(GLMathLib.flatten(MatView)));    
-    gl.uniformMatrix4fv(shaderVar["UMatCameraRot"], false, new Float32Array(GLMathLib.flatten(MatCameraRot)));
-    var MatCameraRotOpp = GLMathLib.mat4(1.0);
-    MatCameraRotOpp = GLMathLib.rotate(MatCameraRotOpp, -angle/5.0, GLMathLib.vec3(0, 1, 0));
-
-    // Update general uniforms.
-    var NewCameraPosition = GLMathLib.mult(MatCameraRotOpp, GLMathLib.vec4(Camera.eye, 0.0));
-    gl.uniform4fv(shaderVar["UCamPosition"], new Float32Array(NewCameraPosition));
-    gl.uniformMatrix4fv(shaderVar["UMatViewInv"], false, new Float32Array(GLMathLib.flatten(GLMathLib.inverse(MatView))));
-    var NewLightPosition = GLMathLib.mult(MatCameraRotOpp, LightPosition);
-    gl.uniform4fv(shaderVar["ULightPosition"], new Float32Array(NewLightPosition));
-
-    ////////////////////////////////////////////////////////////////
-    // Draw skybox.
-
-    gl.depthMask(false);
-    gl.uniform1i(shaderVar["USkybox"], true);
-
-    // Rebind buffers.
-    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.skybox.vertices);
-    gl.vertexAttribPointer(shaderVar["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.skybox.indices);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
-    gl.uniform1i(gl.getUniformLocation(shaderProgram, "USamplerCube"), 0);
-
-    // Apply transformations.
-    var MatSkybox = GLMathLib.mat4(1.0);
-    MatSkybox = GLMathLib.mult(MatCameraRotOpp, MatSkybox);
-    MatSkybox = GLMathLib.mult(MatModel, MatSkybox);
-
-    // Update specific uniforms.
-    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatSkybox)));
-
-    // Render.
-    gl.drawElements(gl.TRIANGLES, Skybox.indices.length, gl.UNSIGNED_SHORT, 0);
-
-    gl.uniform1i(shaderVar["USkybox"], false);
-    gl.depthMask(true);
-
-    ////////////////////////////////////////////////////////////////
-    // Draw cube.
-
-    // Rebind buffers.
-    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.vertices);
-    gl.vertexAttribPointer(shaderVar["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.normals);
-    gl.vertexAttribPointer(shaderVar["AVertexNormal"], 3, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.cube.indices);
-    // gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
-
-    // Apply transformations.
-    var MatCube = GLMathLib.mat4(1.0);
-    MatCube = GLMathLib.scale(MatCube, GLMathLib.vec3(1.3, 1.3, 1.3));
-    MatCube = GLMathLib.rotate(MatCube, angle/3, GLMathLib.vec3(1, 0, 0));
-    MatCube = GLMathLib.rotate(MatCube, angle/3, GLMathLib.vec3(0, 1, 0));
-    MatCube = GLMathLib.translate(MatCube, GLMathLib.vec3(3, 0, 0));
-    // Camera Rotation Matrix
-    MatCube = GLMathLib.mult(MatCameraRotOpp, MatCube);
-    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatCube));
-    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatCube)));
-    gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
-
-    // Render.
-    gl.drawElements(gl.TRIANGLES, Cube.indices.length, gl.UNSIGNED_SHORT, 0);
-
-    ////////////////////////////////////////////////////////////////
-    // Draw Sphere
-
-    // Rebind Buffers
-    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.vertices);
-    gl.vertexAttribPointer(shaderVar["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.normals);
-    gl.vertexAttribPointer(shaderVar["AVertexNormal"], 3, gl.FLOAT, false, 0, 0);
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.sphere.indices);
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
-
-    var MatSphere = GLMathLib.mat4(1.0);
-    MatSphere = GLMathLib.scale(MatSphere, GLMathLib.vec3(2, 2, 2));
-    // MatModel = GLMathLib.rotate(MatModel, angle, GLMathLib.vec3(1, 0, 0));
-    // MatModel = GLMathLib.rotate(MatModel, angle, GLMathLib.vec3(0, 1, 0));
-    // MatSphere = GLMathLib.translate(MatSphere, GLMathLib.vec3(7 * Math.sin(angle/50.0), 0, 0));
-    MatSphere = GLMathLib.translate(MatSphere, GLMathLib.vec3(-3, 0, 0));
-    // MatSphere = GLMathLib.translate(MatSphere, GLMathLib.vec3(0, 0, 7 * Math.sin(angle/50.0)));
-    // Camera Rotation Matrix
-    MatSphere = GLMathLib.mult(MatCameraRotOpp, MatSphere);
-    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatSphere));
-    gl.uniformMatrix4fv(shaderVar["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatSphere)));
-    gl.uniformMatrix4fv(shaderVar["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
-
-    // Render.
-    gl.drawElements(gl.TRIANGLES, Sphere.indices.length, gl.UNSIGNED_SHORT, 0);
-
-    angle += 1;
-
-    // Render loop.
-    window.requestAnimFrame(render, canvas);
-}
-
-// Load it all!
-window.onload = function load() {
-    // Initialize the WebGL canvas.
-    init();
-
-    // Render the WebGL canvas.
-    render();
-};

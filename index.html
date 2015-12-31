@@ -3,9 +3,46 @@
     <head>
         <title>WebGL Physically Based Rendering</title>
     </head>
+    <style type="text/css">
+        * {
+            font-family: Arial;
+            margin: 0px;
+            padding: 0px;
+            background-color: #000;
+        }
+        html, body {
+            width: 100%;
+            height: 100%;
+        }
+        canvas {
+            display: block;
+            margin: auto;
+            position: absolute;
+            padding: 0;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+        }
+        #help-text {
+            text-align: center;
+            color: #FFF;
+            background-color: rgba(0, 0, 0, 0.5);
+            margin: 0px auto;
+            position: relative;
+            padding: 0;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1;
+            /*height: 100px;*/
+        }
+    </style>
     <body>
         <!-- Canvas for rendering WebGL image. -->
-        <canvas id="webgl-canvas" width="1280" height="720"></canvas>
+        <canvas id="webgl-canvas"></canvas>
+        <div id="help-text">Hold and drag the mouse on the screen to rotate the camera around the center.</div>
 
         <!-- All the code for interfacing with GLSL with JavaScript. -->
 
@@ -30,7 +67,7 @@
 
                 // Calculate the position and normals to pass into the fragment shader.
                 vec3 PosTransform = vec3(UMatModel * vec4(AVertexPosition, 1.0));
-                vec3 NormTransform = vec3(UMatNormal * vec4(AVertexNormal, 0.0));
+                vec3 NormTransform = vec3(UMatNormal * vec4(AVertexNormal, 1.0));
                 vec3 LightTransform = (ULightPosition).xyz;
 
                 L = normalize(LightTransform - PosTransform);
@@ -62,8 +99,7 @@
             uniform mat4 UMatCameraRot;
             uniform mat4 UMatViewInv;
 
-            varying vec3 L, N, E;
-            varying vec3 I;
+            varying vec3 L, N, E, I;
             varying vec3 VTextureCoordSkybox;
             varying vec4 VColor;
 
@@ -85,11 +121,11 @@
                 VColor = (ColorAmbient + ColorDiffuse + ColorSpecular);
                 VColor.a = 1.0;
 
+                // Add environment mapping.
                 vec3 LightReflected = reflect(I, N);
-                LightReflected = vec3(UMatCameraRot * vec4(LightReflected, 0.0));
-                // LightReflected = vec3(UMatCameraRot * UMatViewInv * vec4(LightReflected, 0.0));
+                LightReflected = normalize(vec3(UMatCameraRot * vec4(LightReflected, 0.0)));
                 VColor += VColor * textureCube(USamplerCube, LightReflected);
-                // VColor.a = 1.0;
+                VColor.a = 1.0;
 
                 if (USkybox)
                 {
@@ -105,6 +141,8 @@
         <script type="text/javascript" src="javascript/webgl-utils.js"></script>
         <script type="text/javascript" src="javascript/glmathlib.js"></script>
         <script type="text/javascript" src="javascript/mesh.js"></script>
+        <script type="text/javascript" src="javascript/control.js"></script>
+        <script type="text/javascript" src="javascript/settings.js"></script>
         <script type="text/javascript" src="javascript/main.js"></script>
     </body>
 </html>
