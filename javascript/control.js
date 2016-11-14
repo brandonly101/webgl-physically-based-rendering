@@ -2,8 +2,10 @@
 
 // Small library that handles the creation of meshes and its properties.
 
-// Define a controls singleton.
-var Control = {
+// Define a controls namespace.
+var Control = Control || {};
+
+Control.var = {
     isMouseDown: false,
     angleX: 0.0,
     angleY: 0.0,
@@ -11,42 +13,42 @@ var Control = {
     lastMouseY: 0.0,
     currMouseX: 0.0,
     currMouseY: 0.0,
-    mouseSensitivity: 10.0,
-
-    init: function() {    
-        document.addEventListener("mousedown", this.onDocumentMouseDown);
-        document.addEventListener("mouseup", this.onDocumentMouseUp);
-        document.addEventListener("mousemove", this.onDocumentMouseMove);
-    },
-
-    onDocumentMouseDown: function(e) {
-        e = e || window.event;
-        e.preventDefault();
-        Control.isMouseDown = true;
-        Control.currMouseX = Control.angleX;
-        Control.currMouseY = Control.angleY;
-        Control.lastMouseX = (e.pageX || e.clientX);
-        Control.lastMouseY = (e.pageY || e.clientY);
-    },
-
-    onDocumentMouseUp: function(e) {
-        e = e || window.event;
-        e.preventDefault();
-        Control.isMouseDown = false;
-    },
-
-    onDocumentMouseMove: function(e) {
-        e = e || window.event;
-        e.preventDefault();
-        if (Control.isMouseDown) {
-            var newMouseX = (e.pageX || e.clientX);
-            var newMouseY = (e.pageY || e.clientY);
-            Control.angleX = (newMouseX - Control.lastMouseX + Control.currMouseX);
-            Control.angleY = (newMouseY - Control.lastMouseY + Control.currMouseY);
-        }
-    },
-
-    setMouseSensitivity: function(sensitivity) {
-        Control.mouseSensitivity = sensitivity;
-    }
+    mouseSensitivity: 10.0
 }
+
+Control.init = function() {    
+    document.addEventListener("mousedown", this.onDocumentMouseDown);
+    document.addEventListener("mouseup", this.onDocumentMouseUp);
+    document.addEventListener("mousemove", this.onDocumentMouseMove);
+};
+
+Control.onDocumentMouseDown = function(e) {
+    e = e || window.event;
+    e.preventDefault();
+    Control.var.isMouseDown = true;
+    Control.var.currMouseX = Control.var.angleX;
+    Control.var.currMouseY = Control.var.angleY;
+    Control.var.lastMouseX = (e.pageX || e.clientX);
+    Control.var.lastMouseY = (e.pageY || e.clientY);
+};
+
+Control.onDocumentMouseUp = function(e) {
+    e = e || window.event;
+    e.preventDefault();
+    Control.var.isMouseDown = false;
+};
+
+Control.onDocumentMouseMove = function(e) {
+    e = e || window.event;
+    e.preventDefault();
+    if (Control.var.isMouseDown) {
+        var newMouseX = (e.pageX || e.clientX);
+        var newMouseY = (e.pageY || e.clientY);
+        Control.var.angleX = (newMouseX - Control.var.lastMouseX + Control.var.currMouseX);
+        Control.var.angleY = (newMouseY - Control.var.lastMouseY + Control.var.currMouseY);
+    }
+};
+
+Control.setMouseSensitivity = function(sensitivity) {
+    Control.var.mouseSensitivity = sensitivity;
+};

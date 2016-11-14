@@ -1,0 +1,86 @@
+# 3ds Max Wavefront OBJ Exporter v0.94b - (c)2007 guruware
+# File Created: 21.11.2014 16:14:08
+
+newmtl NewHOUSE2_MADEIRA
+	Ns 10.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 1.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.0000 0.0000 0.0000
+	Kd 0.5880 0.5880 0.5880
+	Ks 0.0000 0.0000 0.0000
+	Ke 0.0000 0.0000 0.0000
+	map_Ka C:\Users\Leandro\Desktop\WoodHouse.fbm\MADEIRA2.tga
+	map_Kd C:\Users\Leandro\Desktop\WoodHouse.fbm\MADEIRA2.tga
+
+newmtl NewHOUSE2_MADEIRA3
+	Ns 10.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 1.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.0000 0.0000 0.0000
+	Kd 0.5880 0.5880 0.5880
+	Ks 0.0000 0.0000 0.0000
+	Ke 0.0000 0.0000 0.0000
+	map_Ka C:\Users\Leandro\Desktop\WoodHouse.fbm\MADEIRA3.tga
+	map_Kd C:\Users\Leandro\Desktop\WoodHouse.fbm\MADEIRA3.tga
+
+newmtl NewHOUSE2_TELHA2
+	Ns 10.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 1.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.0000 0.0000 0.0000
+	Kd 0.5880 0.5880 0.5880
+	Ks 0.0000 0.0000 0.0000
+	Ke 0.0000 0.0000 0.0000
+	map_Ka C:\Users\Leandro\Desktop\WoodHouse.fbm\TELHA2.tga
+	map_Kd C:\Users\Leandro\Desktop\WoodHouse.fbm\TELHA2.tga
+
+newmtl NewHOUSE2_TELHA3
+	Ns 10.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 1.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.0000 0.0000 0.0000
+	Kd 0.5880 0.5880 0.5880
+	Ks 0.0000 0.0000 0.0000
+	Ke 0.0000 0.0000 0.0000
+	map_Ka C:\Users\Leandro\Desktop\WoodHouse.fbm\TELHA3.tga
+	map_Kd C:\Users\Leandro\Desktop\WoodHouse.fbm\TELHA3.tga
+
+newmtl NewHOUSE2_TELHA
+	Ns 10.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 1.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.0000 0.0000 0.0000
+	Kd 0.5880 0.5880 0.5880
+	Ks 0.0000 0.0000 0.0000
+	Ke 0.0000 0.0000 0.0000
+	map_Ka C:\Users\Leandro\Desktop\WoodHouse.fbm\TELHA.tga
+	map_Kd C:\Users\Leandro\Desktop\WoodHouse.fbm\TELHA.tga
+
+newmtl NewHOUSE2_VIGA
+	Ns 10.0000
+	Ni 1.5000
+	d 1.0000
+	Tr 1.0000
+	Tf 1.0000 1.0000 1.0000 
+	illum 2
+	Ka 0.0000 0.0000 0.0000
+	Kd 0.5880 0.5880 0.5880
+	Ks 0.0000 0.0000 0.0000
+	Ke 0.0000 0.0000 0.0000
+	map_Ka C:\Users\Leandro\Desktop\WoodHouse.fbm\MADEIRA3.tga
+	map_Kd C:\Users\Leandro\Desktop\WoodHouse.fbm\MADEIRA3.tga
