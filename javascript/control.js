@@ -1,11 +1,12 @@
-// Copyright Brandon Ly 2015 all rights reserved.
+// Copyright Brandon Ly 2015-2018 all rights reserved.
 
 // Small library that handles the creation of meshes and its properties.
 
 // Define a controls namespace.
 var Control = Control || {};
 
-Control.var = {
+Control.var =
+{
     isMouseDown: false,
     angleX: 0.0,
     angleY: 0.0,
@@ -16,13 +17,15 @@ Control.var = {
     mouseSensitivity: 10.0
 }
 
-Control.init = function() {    
+Control.init = function()
+{
     document.addEventListener("mousedown", this.onDocumentMouseDown);
     document.addEventListener("mouseup", this.onDocumentMouseUp);
     document.addEventListener("mousemove", this.onDocumentMouseMove);
 };
 
-Control.onDocumentMouseDown = function(e) {
+Control.onDocumentMouseDown = function(e)
+{
     e = e || window.event;
     e.preventDefault();
     Control.var.isMouseDown = true;
@@ -32,16 +35,19 @@ Control.onDocumentMouseDown = function(e) {
     Control.var.lastMouseY = (e.pageY || e.clientY);
 };
 
-Control.onDocumentMouseUp = function(e) {
+Control.onDocumentMouseUp = function(e)
+{
     e = e || window.event;
     e.preventDefault();
     Control.var.isMouseDown = false;
 };
 
-Control.onDocumentMouseMove = function(e) {
+Control.onDocumentMouseMove = function(e)
+{
     e = e || window.event;
     e.preventDefault();
-    if (Control.var.isMouseDown) {
+    if (Control.var.isMouseDown)
+    {
         var newMouseX = (e.pageX || e.clientX);
         var newMouseY = (e.pageY || e.clientY);
         Control.var.angleX = (newMouseX - Control.var.lastMouseX + Control.var.currMouseX);
@@ -49,6 +55,7 @@ Control.onDocumentMouseMove = function(e) {
     }
 };
 
-Control.setMouseSensitivity = function(sensitivity) {
+Control.setMouseSensitivity = function(sensitivity)
+{
     Control.var.mouseSensitivity = sensitivity;
 };

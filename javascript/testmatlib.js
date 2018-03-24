@@ -1,5 +1,6 @@
 // Load it all!
-window.onload = function load() {
+window.onload = function load()
+{
     var perspective = GLMathLib.perspective(65, 16.0/9.0, 0.3, 690);
     console.log(perspective);
     console.log(GLMathLib.flatten(perspective));

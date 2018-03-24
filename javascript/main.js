@@ -1,11 +1,13 @@
 // Copyright Brandon Ly 2015 all rights reserved.
 
 // WebGL Code to also learn about implementing physically based rendering.
+
 "use strict";
 
 // Get our HTML WebGL Canvas.
 var canvas = document.getElementById("webgl-canvas");
-// if (canvas.webkitRequestFullScreen) {
+// if (canvas.webkitRequestFullScreen)
+{
 //     canvas.webkitRequestFullScreen();
 // } else {
 //     canvas.mozRequestFullScreen();
@@ -28,10 +30,10 @@ Buffer.skybox = {};
 Buffer.mesh = {};
 
 // Create a cube and sphere mesh object
-var Cube = MeshLib.createCube();
-var meshRender = MeshLib.createCube();
-var Sphere = MeshLib.createSphere(4);
-var Skybox = MeshLib.createCubeMap(500.0);
+var Cube = Mesh.createCube();
+var meshRender = Mesh.createCube();
+var Sphere = Mesh.createSphere(4);
+var Skybox = Mesh.createCubeMap(500.0);
 
 // Lighting and shading properties.
 var LightPosition = GLMathLib.vec4(0.0, 20.0, 5.0, 0.0);
@@ -62,16 +64,20 @@ var angle = 0;
 ////////////////////////////////////////////////////////////////
 
 // Init function.
-function init() {
+function init()
+{
     // Initialize the canvas.
     setCanvas();
 
     // Get the context into a local gl and and a public gl.
     // Use preserveDrawingBuffer:true to keep the drawing buffer after
     // presentation. Fail if context is not found.
-    try {
+    try
+    {
         gl = WebGLUtils.setupWebGL(canvas);
-    } catch (e) {
+    }
+    catch (e)
+    {
         console.log("Getting context failed!");
     }
 
@@ -135,15 +141,18 @@ function init() {
     Control.setMouseSensitivity(7.0);
 
     // Add an event listener to the input box.
-    document.getElementById("obj-upload").addEventListener("change", function(e) {
+    document.getElementById("obj-upload").addEventListener("change", function(e)
+    {
         var file = e.target.files[0];
-        if (!file) {
+        if (!file)
+        {
             return;
         }
         var reader = new FileReader();
-        reader.onload = function(e) {
+        reader.onload = function(e)
+        {
             var contents = e.target.result;
-            meshRenderer = MeshLib.createMesh(contents);
+            meshRenderer = Mesh.createMesh(contents);
             Buffer.mesh = createMeshBuffer(meshRender.vertices, meshRender.normals, meshRender.indices);
         };
         reader.readAsText(file);
@@ -153,7 +162,8 @@ function init() {
 }
 
 // Render loop.
-function render() {
+function render()
+{
     setCanvas();
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -282,7 +292,8 @@ function render() {
 }
 
 // Load it all!
-window.onload = function load() {
+window.onload = function load()
+{
     // Initialize the WebGL canvas.
     init();
 
@@ -295,13 +306,17 @@ window.onload = function load() {
 ////////////////////////////////////////////////////////////////
 
 // Initialize separate settings for the canvas.
-function setCanvas() {
+function setCanvas()
+{
     var innerAspectRatio = window.innerWidth / window.innerHeight;
     var canvasWidth, canvasHeight;
-    if (innerAspectRatio > Settings.aspectRatio) {
+    if (innerAspectRatio > Settings.aspectRatio)
+    {
         canvasHeight = window.innerHeight;
         canvasWidth = canvasHeight * Settings.aspectRatio;
-    } else {
+    }
+    else
+    {
         canvasWidth = window.innerWidth;
         canvasHeight = canvasWidth * 1.0 / Settings.aspectRatio;
     }
@@ -310,26 +325,33 @@ function setCanvas() {
 }
 
 // Create and initialize shaders.
-function initShaders() {
+function initShaders()
+{
     // Get the shaders from the DOM/HTML.
-    function getShader(gl, id) {
+    function getShader(gl, id)
+    {
         // Get the shader source.
         var shaderScript = document.getElementById(id);
-        if (!shaderScript) {
+        if (!shaderScript)
+        {
             return null;
         }
         var sourceCode = '';
-        for (var currentChild = shaderScript.firstChild; currentChild; currentChild = currentChild.nextSibling) {
-            if (currentChild.nodeType == currentChild.TEXT_NODE) {
+        for (var currentChild = shaderScript.firstChild; currentChild; currentChild = currentChild.nextSibling)
+        {
+            if (currentChild.nodeType == currentChild.TEXT_NODE)
+            {
                 sourceCode += currentChild.textContent;
             }
         }
 
         // Create the shader and attach the source to it.
         var shader;
-        if (shaderScript.type == "x-shader/x-vertex") {
+        if (shaderScript.type == "x-shader/x-vertex")
+        {
             shader = gl.createShader(gl.VERTEX_SHADER);
-        } else if (shaderScript.type == "x-shader/x-fragment") {
+        } else if (shaderScript.type == "x-shader/x-fragment")
+        {
             shader = gl.createShader(gl.FRAGMENT_SHADER);
         } else {
             return null;    // Unknown shader type.
@@ -337,10 +359,11 @@ function initShaders() {
         gl.shaderSource(shader, sourceCode);
 
         // Compile the shader program and check for success.
-        gl.compileShader(shader);  
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {  
-            console.log("Shader Compilation Error: " + gl.getShaderInfoLog(shader));  
-            return null;  
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+        {
+            console.log("Shader Compilation Error: " + gl.getShaderInfoLog(shader));
+            return null;
         }
 
         return shader;
@@ -355,7 +378,8 @@ function initShaders() {
     gl.attachShader(shaderProgram, vertexShader);
     gl.attachShader(shaderProgram, fragmentShader);
     gl.linkProgram(shaderProgram);
-    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS))
+    {
         console.log("Unable to initialize the shader program!");
     }
 
@@ -364,7 +388,8 @@ function initShaders() {
 }
 
 // Initialize the shader locations.
-function initShaderVar() {
+function initShaderVar()
+{
     // Attribute variables.
     shaderVar["AVertexPosition"] = gl.getAttribLocation(shaderProgram, "AVertexPosition");
     shaderVar["AVertexNormal"] = gl.getAttribLocation(shaderProgram, "AVertexNormal");
@@ -391,7 +416,8 @@ function initShaderVar() {
     shaderVar["UMatCameraRot"] = gl.getUniformLocation(shaderProgram, "UMatCameraRot");
 }
 
-function createMeshBuffer(vertices, normals, indices) {
+function createMeshBuffer(vertices, normals, indices)
+{
     var result = {};
 
     // Create vertices buffer.
@@ -406,7 +432,8 @@ function createMeshBuffer(vertices, normals, indices) {
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
     // Create normals buffer, if applicable.
-    if (normals != null) {
+    if (normals != null)
+    {
         result.normals = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, result.normals);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
@@ -416,7 +443,8 @@ function createMeshBuffer(vertices, normals, indices) {
 }
 
 // Initialize Buffers.
-function initBuffers() {
+function initBuffers()
+{
     // Create buffers for the skybox.
     Buffer.skybox = createMeshBuffer(Skybox.vertices, null, Skybox.indices);
 
@@ -434,7 +462,8 @@ function initBuffers() {
 // http://hristo.oskov.com/projects/cs418/mp3/js/mp3.js and, in
 // a way, three.js's implementation a skybox.
 //
-function initSkybox(string) {
+function initSkybox(string)
+{
     gl.activeTexture(gl.TEXTURE0);
 
     Skybox.texture = gl.createTexture();
@@ -454,10 +483,13 @@ function initSkybox(string) {
         ["assets/skybox/" + string + "/negz.jpg", gl.TEXTURE_CUBE_MAP_NEGATIVE_Z]
     ];
 
-    for (var i = 0; i < cubeFaces.length; i++) {
+    for (var i = 0; i < cubeFaces.length; i++)
+    {
         var image = new Image();
-        image.onload = function(texture, face, image) {
-            return function() {
+        image.onload = function(texture, face, image)
+        {
+            return function()
+            {
                 gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
                 gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture)
                 gl.texImage2D(face, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
@@ -469,16 +501,19 @@ function initSkybox(string) {
 }
 
 // Draw texture test.
-// function createTexture(img) {
+// function createTexture(img)
+// {
 //     var result = gl.createTexture();
 //     gl.activeTexture(gl.TEXTURE0);
 //     gl.uniform1i(shaderVar["USampler"], 0);
 //     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 //     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
-    
+
 //     var image = new Image();
-//     image.onload = function(texture, image) {
-//         return function() {
+//     image.onload = function(texture, image)
+//     {
+//         return function()
+//         {
 //             gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
 //             gl.bindTexture(gl.TEXTURE_2D, texture);
 //             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);

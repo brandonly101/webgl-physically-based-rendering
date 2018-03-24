@@ -2,7 +2,8 @@
 
 // Settings object that controls the properties of the canvas and renderer.
 
-var Settings = {
+var Settings =
+{
 	yFOV: 65.0,
 	aspectRatio: 16.0 / 9.0,
 	nearClipPlane: 0.3,
