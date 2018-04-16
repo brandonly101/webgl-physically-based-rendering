@@ -23,8 +23,6 @@ var shaderProgramPhong;
 var shaderProgramSkybox;
 var shaderVarPhong = {};
 var shaderVarSkybox = {};
-var vertexPositionAttribute;
-var vertexColorAttribute;
 var skyboxImageLoadCount = 0;
 
 // Vertex Buffer variables
@@ -127,8 +125,6 @@ function init()
 
     // Pass the transformation matrix components to the shaders.
     gl.uniformMatrix4fv(shaderVarPhong["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatModel)));
-    gl.uniformMatrix4fv(shaderVarPhong["UMatView"], false, new Float32Array(GLMathLib.flatten(MatView)));
-    gl.uniformMatrix4fv(shaderVarPhong["UMatProj"], false, new Float32Array(GLMathLib.flatten(MatProj)));
     gl.uniformMatrix4fv(shaderVarPhong["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
 
     // Create the lighting variables.
@@ -195,9 +191,7 @@ function render()
     var MatCameraRot = GLMathLib.mat4(1.0);
     MatCameraRot = GLMathLib.rotate(MatCameraRot, -Control.var.angleY/Control.var.mouseSensitivity, GLMathLib.vec3(1, 0, 0));
     MatCameraRot = GLMathLib.rotate(MatCameraRot, -Control.var.angleX/Control.var.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
-    var MatCameraRotOpp = GLMathLib.mat4(1.0);
-    MatCameraRotOpp = GLMathLib.rotate(MatCameraRotOpp, Control.var.angleX/Control.var.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
-    MatCameraRotOpp = GLMathLib.rotate(MatCameraRotOpp, Control.var.angleY/Control.var.mouseSensitivity, GLMathLib.vec3(1, 0, 0));
+    var MatCameraRotInv = GLMathLib.inverse(MatCameraRot);
 
     if (skyboxImageLoadCount === 6)
     {
@@ -215,7 +209,7 @@ function render()
 
         // Apply transformations.
         var MatSkybox = GLMathLib.mat4(1.0);
-        MatSkybox = GLMathLib.mult(MatCameraRotOpp, MatSkybox);
+        MatSkybox = GLMathLib.mult(MatCameraRotInv, MatSkybox);
         MatSkybox = GLMathLib.mult(MatModel, MatSkybox);
         MatSkybox = GLMathLib.mult(MatView, MatSkybox);
         MatSkybox = GLMathLib.mult(MatProj, MatSkybox);
@@ -233,10 +227,10 @@ function render()
         // Draw general meshes.
 
         // Update general uniforms.
-        var NewCameraPosition = GLMathLib.mult(MatCameraRotOpp, GLMathLib.vec4(Camera.eye, 1.0));
+        var NewCameraPosition = GLMathLib.mult(MatCameraRotInv, GLMathLib.vec4(Camera.eye, 1.0));
         gl.uniform4fv(shaderVarPhong["UCamPosition"], new Float32Array(NewCameraPosition));
         gl.uniformMatrix4fv(shaderVarPhong["UMatViewInv"], false, new Float32Array(GLMathLib.flatten(GLMathLib.inverse(MatView))));
-        var NewLightPosition = GLMathLib.mult(MatCameraRotOpp, LightPosition);
+        var NewLightPosition = GLMathLib.mult(MatCameraRotInv, LightPosition);
         gl.uniform4fv(shaderVarPhong["ULightPosition"], new Float32Array(NewLightPosition));
         gl.uniformMatrix4fv(shaderVarPhong["UMatCameraRot"], false, new Float32Array(GLMathLib.flatten(MatCameraRot)));
 
@@ -257,9 +251,12 @@ function render()
         MatCube = GLMathLib.translate(MatCube, GLMathLib.vec3(3, 0, 0));
 
         // Camera Rotation Matrix
-        MatCube = GLMathLib.mult(MatCameraRotOpp, MatCube);
+        MatCube = GLMathLib.mult(MatCameraRotInv, MatCube);
         MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatCube));
         gl.uniformMatrix4fv(shaderVarPhong["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatCube)));
+        MatCube = GLMathLib.mult(MatView, MatCube);
+        MatCube = GLMathLib.mult(MatProj, MatCube);
+        gl.uniformMatrix4fv(shaderVarPhong["UMatMVP"], false, new Float32Array(GLMathLib.flatten(MatCube)));
         gl.uniformMatrix4fv(shaderVarPhong["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
 
         // Render.
@@ -279,9 +276,12 @@ function render()
         MatSphere = GLMathLib.scale(MatSphere, GLMathLib.vec3(2, 2, 2));
         MatSphere = GLMathLib.translate(MatSphere, GLMathLib.vec3(-3, 0, 0));
         // Camera Rotation Matrix
-        MatSphere = GLMathLib.mult(MatCameraRotOpp, MatSphere);
+        MatSphere = GLMathLib.mult(MatCameraRotInv, MatSphere);
         MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatSphere));
         gl.uniformMatrix4fv(shaderVarPhong["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatSphere)));
+        MatSphere = GLMathLib.mult(MatView, MatSphere);
+        MatSphere = GLMathLib.mult(MatProj, MatSphere);
+        gl.uniformMatrix4fv(shaderVarPhong["UMatMVP"], false, new Float32Array(GLMathLib.flatten(MatSphere)));
         gl.uniformMatrix4fv(shaderVarPhong["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
 
         // Render.
@@ -363,6 +363,26 @@ function initShaders()
         return shader;
     }
 
+    function SetShaderVars(gl, shaderProgram, shaderProgramVars, glVarType, shaderVars)
+    {
+        if (glVarType == "attribute")
+        {
+            for (var i = 0; i < shaderVars.length; i++)
+            {
+                var shaderVar = shaderVars[i];
+                shaderProgramVars[shaderVar] = gl.getAttribLocation(shaderProgram, shaderVar);
+            }
+        }
+        else if (glVarType == "uniform")
+        {
+            for (var i = 0; i < shaderVars.length; i++)
+            {
+                var shaderVar = shaderVars[i];
+                shaderProgramVars[shaderVar] = gl.getUniformLocation(shaderProgram, shaderVar);
+            }
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////////////
     // Phong shader
 
@@ -381,29 +401,31 @@ function initShaders()
     }
 
     // Attribute variables.
-    shaderVarPhong["AVertexPosition"] = gl.getAttribLocation(shaderProgramPhong, "AVertexPosition");
-    shaderVarPhong["AVertexNormal"] = gl.getAttribLocation(shaderProgramPhong, "AVertexNormal");
-    shaderVarPhong["ATextureCoord"] = gl.getAttribLocation(shaderProgramPhong, "ATextureCoord");
+    SetShaderVars(gl, shaderProgramPhong, shaderVarPhong, "attribute",
+    [
+        "AVertexPosition",
+        "AVertexNormal",
+        "ATextureCoord"
+    ]);
 
     // Uniform variables.
-    shaderVarPhong["USkybox"] = gl.getUniformLocation(shaderProgramPhong, "USkybox");
-    shaderVarPhong["UEnvMap"] = gl.getUniformLocation(shaderProgramPhong, "UEnvMap");
-    shaderVarPhong["ULightPosition"] = gl.getUniformLocation(shaderProgramPhong, "ULightPosition");
-    shaderVarPhong["UCamPosition"] = gl.getUniformLocation(shaderProgramPhong, "UCamPosition");
-    shaderVarPhong["UCamPosSky"] = gl.getUniformLocation(shaderProgramPhong, "UCamPosSky");
-
-    shaderVarPhong["UAmbientProduct"] = gl.getUniformLocation(shaderProgramPhong, "UAmbientProduct");
-    shaderVarPhong["UDiffuseProduct"] = gl.getUniformLocation(shaderProgramPhong, "UDiffuseProduct");
-    shaderVarPhong["USpecularProduct"] = gl.getUniformLocation(shaderProgramPhong, "USpecularProduct");
-
-    shaderVarPhong["USamplerCube"] = gl.getUniformLocation(shaderProgramPhong, "USamplerCube");
-
-    shaderVarPhong["UMatModel"] = gl.getUniformLocation(shaderProgramPhong, "UMatModel");
-    shaderVarPhong["UMatView"] = gl.getUniformLocation(shaderProgramPhong, "UMatView");
-    shaderVarPhong["UMatViewInv"] = gl.getUniformLocation(shaderProgramPhong, "UMatViewInv");
-    shaderVarPhong["UMatProj"] = gl.getUniformLocation(shaderProgramPhong, "UMatProj");
-    shaderVarPhong["UMatNormal"] = gl.getUniformLocation(shaderProgramPhong, "UMatNormal");
-    shaderVarPhong["UMatCameraRot"] = gl.getUniformLocation(shaderProgramPhong, "UMatCameraRot");
+    SetShaderVars(gl, shaderProgramPhong, shaderVarPhong, "uniform",
+    [
+        "USkybox",
+        "UEnvMap",
+        "ULightPosition",
+        "UCamPosition",
+        "UCamPosSky",
+        "UAmbientProduct",
+        "UDiffuseProduct",
+        "USpecularProduct",
+        "USamplerCube",
+        "UMatModel",
+        "UMatMVP",
+        "UMatNormal",
+        "UMatViewInv",
+        "UMatCameraRot"
+    ]);
 
     ////////////////////////////////////////////////////////////////////////////////
     // Skybox Shader
@@ -425,11 +447,10 @@ function initShaders()
     // Set shader variables
 
     // Attribute variables.
-    shaderVarSkybox["AVertexPosition"] = gl.getAttribLocation(shaderProgramSkybox, "AVertexPosition");
+    SetShaderVars(gl, shaderProgramSkybox, shaderVarSkybox, "attribute", [ "AVertexPosition" ]);
 
     // Uniform variables.
-    shaderVarSkybox["UMatMVP"] = gl.getUniformLocation(shaderProgramSkybox, "UMatMVP");
-    shaderVarSkybox["USamplerCube"] = gl.getUniformLocation(shaderProgramSkybox, "USamplerCube");
+    SetShaderVars(gl, shaderProgramSkybox, shaderVarSkybox, "uniform", [ "UMatMVP", "USamplerCube" ]);
 }
 
 function createMeshBuffer(vertices, normals, indices)

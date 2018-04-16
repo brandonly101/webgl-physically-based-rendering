@@ -5,12 +5,10 @@
 
 class FileUtil
 {
-    // Get a specified filename (w/ path) as a Blob
+    // Get a specified filename (w/ path) as a DOMString
     static GetFile(filename)
     {
         var result = null;
-
-        var stall = true;
 
         var req = new XMLHttpRequest();
         req.open('GET', filename, false);
@@ -19,6 +17,7 @@ class FileUtil
         {
             result = req.response;
         }
+
         return result;
     }
 

@@ -10,7 +10,8 @@ attribute vec2 ATextureCoord;
 uniform vec4 UCamPosition;
 uniform vec4 UCamPosSky;
 uniform vec4 ULightPosition;
-uniform mat4 UMatModel, UMatView, UMatProj;
+uniform mat4 UMatModel;
+uniform mat4 UMatMVP;
 uniform mat4 UMatNormal;
 
 varying vec3 L, N, E, I;
@@ -30,5 +31,5 @@ void main(void)
     // Calculate environment mapping variables.
     I = normalize(PosTransform - UCamPosSky.xyz);
 
-    gl_Position = UMatProj * UMatView * UMatModel * vec4(AVertexPosition, 1.0);
+    gl_Position = UMatMVP * vec4(AVertexPosition, 1.0);
 }
