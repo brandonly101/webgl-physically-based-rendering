@@ -5,7 +5,7 @@
 
 attribute vec3 AVertexPosition;
 attribute vec3 AVertexNormal;
-attribute vec2 ATextureCoord;
+// attribute vec2 ATextureCoord;
 
 uniform vec4 UCamPosition;
 uniform vec4 UCamPosSky;

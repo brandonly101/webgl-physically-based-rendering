@@ -4,7 +4,9 @@
 //
 
 attribute vec3 AVertexPosition;
+
 uniform mat4 UMatMVP;
+
 varying vec3 VTextureCoordSkybox;
 
 void main(void)

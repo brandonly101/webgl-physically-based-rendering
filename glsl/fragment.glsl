@@ -4,8 +4,9 @@
 //
 precision mediump float;
 
-uniform bool UEnvMap;
-uniform vec4 UAmbientProduct, UDiffuseProduct, USpecularProduct;
+uniform vec4 UAmbientProduct;
+uniform vec4 UDiffuseProduct;
+uniform vec4 USpecularProduct;
 uniform samplerCube USamplerCube;
 uniform mat4 UMatViewInv;
 uniform mat4 UMatCameraRot;

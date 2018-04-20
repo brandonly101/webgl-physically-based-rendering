@@ -20,6 +20,7 @@ var gl;
 
 // Other global variables
 var shaderProgramPhong;
+var shaderProgramObjectPhong;
 var shaderProgramSkybox;
 var shaderVarPhong = {};
 var shaderVarSkybox = {};
@@ -61,6 +62,180 @@ var MatModel, MatView, MatProj, MatModelView, MatMVP;
 var MatNormal;
 
 var angle = 0;
+
+class ShaderProgramObject
+{
+    // Get the shaders GLSL files via XMLHTTPRequest.
+    static getShaderFromFile(gl, filename, shaderType)
+    {
+        // Get the shader source.
+        var sourceCode = FileUtil.GetFile(filename);
+
+        // Create the shader and attach the source to it.
+        var shader;
+        switch (shaderType)
+        {
+        case "vertex":
+            shader = gl.createShader(gl.VERTEX_SHADER);
+            break;
+        case "fragment":
+            shader = gl.createShader(gl.FRAGMENT_SHADER);
+            break;
+        default:
+            return null; // Unknown shader type.
+        }
+        gl.shaderSource(shader, sourceCode);
+
+        // Compile the shader program and check for success.
+        gl.compileShader(shader);
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+        {
+            console.log("Shader Compilation Error: " + gl.getShaderInfoLog(shader));
+            return null;
+        }
+
+        return shader;
+    }
+
+    constructor(gl,
+                filenameVertex,
+                filenameFragment,
+                shaderAttributes,
+                shaderUniforms)
+    {
+        this.gl = gl;
+
+        // Get the shader GLSL files via XMLHTTPRequest.
+        let glVertexShader = ShaderProgramObject.getShaderFromFile(gl, filenameVertex, "vertex");
+        let glFragmentShader = ShaderProgramObject.getShaderFromFile(gl, filenameFragment, "fragment");
+
+        // Create the shader and check if successful.
+        this.glShaderProgram = gl.createProgram();
+        gl.attachShader(this.glShaderProgram, glVertexShader);
+        gl.attachShader(this.glShaderProgram, glFragmentShader);
+        gl.linkProgram(this.glShaderProgram);
+        if (!gl.getProgramParameter(this.glShaderProgram, gl.LINK_STATUS))
+        {
+            console.log("Unable to initialize the shader program!");
+        }
+
+        // Set up shader attribute variables.
+        this.attributes = {};
+        let attributeNames = Object.keys(shaderAttributes);
+        for (let i = 0; i < attributeNames.length; i++)
+        {
+            this.attributes[attributeNames[i]] =
+            {
+                "glLocation": gl.getAttribLocation(this.glShaderProgram, attributeNames[i]),
+                "type": shaderAttributes[attributeNames[i]]
+            };
+        }
+        this.attributesArray = Object.values(this.attributes);
+
+        // Set up shader uniform variables.
+        this.uniforms = {};
+        let uniformNames = Object.keys(shaderUniforms);
+        for (let i = 0; i < uniformNames.length; i++)
+        {
+            this.uniforms[uniformNames[i]] =
+            {
+                "glLocation": gl.getUniformLocation(this.glShaderProgram, uniformNames[i]),
+                "type": shaderUniforms[uniformNames[i]],
+                "value": null
+            };
+        }
+        this.uniformsArray = Object.values(this.uniforms);
+    }
+
+    setUniforms()
+    {
+        let gl = this.gl;
+
+        for (let i = 0; i < this.uniformsArray.length; i++)
+        {
+            let uniformVar = this.uniformsArray[i];
+            if (uniformVar.glLocation != null && uniformVar.value != null)
+            {
+                switch (uniformVar.type)
+                {
+                case "vec4":
+                    gl.uniform4fv(uniformVar.glLocation, new Float32Array(uniformVar.value));
+                    break;
+                case "mat4":
+                    gl.uniformMatrix4fv(uniformVar.glLocation, false, new Float32Array(uniformVar.value));
+                    break;
+                }
+            }
+        }
+    }
+}
+
+// class Object
+// {
+//     constructor(gl,
+//                 mesh,
+//                 attribLocationVertex,
+//                 attribLocationNormal)
+//     {
+//         this.gl = gl;
+//         this.mesh = mesh;
+//         this.attribLocationVertex;
+//         this.attribLocationNormal;
+//         this.buffers = {};
+//     }
+
+//     init()
+//     {
+//         let gl = this.gl;
+
+//         // Create vertices buffer.
+//         this.buffers.vertices = gl.createBuffer();
+//         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.vertices);
+//         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+//         // Create normals buffer, if applicable.
+//         if (this.mesh.normals != null)
+//         {
+//             this.buffers.normals = gl.createBuffer();
+//             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.normals);
+//             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
+
+//         }
+
+//         // Create vertex indices buffer.
+//         this.buffers.indices = gl.createBuffer();
+//         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.indices);
+//         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+//     }
+
+//     render()
+//     {
+//         let gl = this.gl;
+
+//         // Rebind buffers.
+//         gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.mesh.vertices);
+//         gl.vertexAttribPointer(this.attribLocationVertex, 3, gl.FLOAT, false, 0, 0);
+//         gl.enableVertexAttribArray(this.attribLocationVertex);
+
+//         if (this.mesh.normals != null)
+//         {
+//             gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.mesh.normals);
+//             gl.vertexAttribPointer(this.attribLocationNormal, 3, gl.FLOAT, false, 0, 0);
+//             gl.enableVertexAttribArray(this.attribLocationNormal);
+//         }
+//         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.mesh.indices);
+
+//         // draw
+//         // ...
+
+//         // Disable attributes
+//         gl.disableVertexAttribArray(this.attribLocationVertex);
+//         if (this.mesh.normals != null)
+//         {
+//             gl.disableVertexAttribArray(this.attribLocationNormal);
+//         }
+//     }
+// }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Main init and render loops.
@@ -104,7 +279,7 @@ function init()
 
     // Clear the color as well as the depth buffer.
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.clearColor(0.15, 0.15, 0.15, 1.0);
+    // gl.clearColor(0.15, 0.15, 0.15, 1.0);
 
     // Create the transformation matrix and calculate other matrices.
     MatModel = GLMathLib.mat4(1.0);
@@ -116,30 +291,52 @@ function init()
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Phong Shader
 
-    // Activate the shader.
-    gl.useProgram(shaderProgramPhong);
+    shaderProgramObjectPhong = new ShaderProgramObject(gl, "glsl/vertex.glsl", "glsl/fragment.glsl",
+    {
+        "AVertexPosition" : "vec3",
+        "AVertexNormal" : "vec3",
+        "ATextureCoord" : "vec2"
+    },
+    {
+        // Vertex Uniforms
+        "UCamPosition" : "vec4",
+        "UCamPosSky" : "vec4",
+        "ULightPosition" : "vec4",
+        "UMatModel" : "mat4",
+        "UMatMVP" : "mat4",
+        "UMatNormal" : "mat4",
+        // Fragment Uniforms
+        "UAmbientProduct" : "vec4",
+        "UDiffuseProduct" : "vec4",
+        "USpecularProduct" : "vec4",
+        "USamplerCube" : "samplerCube",
+        "UMatViewInv" : "mat4",
+        "UMatCameraRot" : "mat4"
+    });
 
-    // Pass some position variables to the shaders.
-    gl.uniform4fv(shaderVarPhong["UCamPosition"], new Float32Array(GLMathLib.vec4(Camera.eye, 0.0)));
-    gl.uniform4fv(shaderVarPhong["UCamPosSky"], new Float32Array(GLMathLib.vec4(Camera.eye, 0.0)));
+    if (true)
+    {
+        // Activate the shader.
+        gl.useProgram(shaderProgramObjectPhong.glShaderProgram);
 
-    // Pass the transformation matrix components to the shaders.
-    gl.uniformMatrix4fv(shaderVarPhong["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatModel)));
-    gl.uniformMatrix4fv(shaderVarPhong["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
+        // Pass some position variables to the shaders.
+        shaderProgramObjectPhong.uniforms["UCamPosition"].value = GLMathLib.vec4(Camera.eye, 0.0);
+        shaderProgramObjectPhong.uniforms["UCamPosSky"].value = GLMathLib.vec4(Camera.eye, 0.0);
 
-    // Create the lighting variables.
-    AmbientProduct = GLMathLib.mult(LightAmbient, MaterialAmbient);
-    DiffuseProduct = GLMathLib.mult(LightDiffuse, MaterialDiffuse);
-    SpecularProduct = GLMathLib.mult(LightSpecular, MaterialSpecular);
+        // Pass the transformation matrix components to the shaders.
+        shaderProgramObjectPhong.uniforms["UMatModel"].value = GLMathLib.flatten(MatModel);
+        shaderProgramObjectPhong.uniforms["UMatNormal"].value = GLMathLib.flatten(MatNormal);
 
-    // Pass the lighting variables to the shaders.
-    gl.uniform4fv(shaderVarPhong["UAmbientProduct"], new Float32Array(AmbientProduct));
-    gl.uniform4fv(shaderVarPhong["UDiffuseProduct"], new Float32Array(DiffuseProduct));
-    gl.uniform4fv(shaderVarPhong["USpecularProduct"], new Float32Array(SpecularProduct));
+        // Create the lighting variables.
+        AmbientProduct = GLMathLib.mult(LightAmbient, MaterialAmbient);
+        DiffuseProduct = GLMathLib.mult(LightDiffuse, MaterialDiffuse);
+        SpecularProduct = GLMathLib.mult(LightSpecular, MaterialSpecular);
 
-    // Enable Attribute Pointers
-    gl.enableVertexAttribArray(shaderVarPhong["AVertexPosition"]);
-    gl.enableVertexAttribArray(shaderVarPhong["AVertexNormal"]);
+        // Pass the lighting variables to the shaders.
+        shaderProgramObjectPhong.uniforms["UAmbientProduct"].value = AmbientProduct;
+        shaderProgramObjectPhong.uniforms["UDiffuseProduct"].value = DiffuseProduct;
+        shaderProgramObjectPhong.uniforms["USpecularProduct"].value = SpecularProduct;
+    }
 
     ////////////////////////////////////////////////////////////////////////////////
     // Skybox Shader
@@ -148,7 +345,7 @@ function init()
     gl.useProgram(shaderProgramSkybox);
 
     MatMVP = GLMathLib.mult(MatProj, MatModelView);
-    gl.enableVertexAttribArray(shaderVarSkybox["AVertexPosition"]);
+    // gl.enableVertexAttribArray(shaderVarSkybox["AVertexPosition"]);
 
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -181,7 +378,7 @@ function render()
 {
     setCanvas();
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    // gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);
     gl.viewport(0, 0, canvas.width, canvas.height);
 
     ////////////////////////////
@@ -193,19 +390,18 @@ function render()
     MatCameraRot = GLMathLib.rotate(MatCameraRot, -Control.var.angleX/Control.var.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
     var MatCameraRotInv = GLMathLib.inverse(MatCameraRot);
 
+    ////////////////////////////
+    // Draw skybox.
     if (skyboxImageLoadCount === 6)
     {
-        ////////////////////////////
-        // Draw skybox.
-
         // Activate the shader.
         gl.useProgram(shaderProgramSkybox);
 
         // Rebind buffers.
         gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.skybox.vertices);
         gl.vertexAttribPointer(shaderVarSkybox["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(shaderVarSkybox["AVertexPosition"]);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.skybox.indices);
-        gl.uniform1i(gl.getUniformLocation(shaderProgramSkybox, "USamplerCube"), 0);
 
         // Apply transformations.
         var MatSkybox = GLMathLib.mat4(1.0);
@@ -216,32 +412,40 @@ function render()
 
         // Update specific uniforms.
         gl.uniformMatrix4fv(shaderVarSkybox["UMatMVP"], false, new Float32Array(GLMathLib.flatten(MatSkybox)));
+        // gl.uniform1i(shaderVarSkybox["USamplerCube"], 0);
 
         // Render.
         gl.drawElements(gl.TRIANGLES, Skybox.indices.length, gl.UNSIGNED_SHORT, 0);
+    }
 
+    ////////////////////////////
+    // Draw general meshes.
+    if (skyboxImageLoadCount === 6)
+    {
         // Activate the shader.
-        gl.useProgram(shaderProgramPhong);
-
-        ////////////////////////////
-        // Draw general meshes.
+        gl.useProgram(shaderProgramObjectPhong.glShaderProgram);
 
         // Update general uniforms.
         var NewCameraPosition = GLMathLib.mult(MatCameraRotInv, GLMathLib.vec4(Camera.eye, 1.0));
-        gl.uniform4fv(shaderVarPhong["UCamPosition"], new Float32Array(NewCameraPosition));
-        gl.uniformMatrix4fv(shaderVarPhong["UMatViewInv"], false, new Float32Array(GLMathLib.flatten(GLMathLib.inverse(MatView))));
+        shaderProgramObjectPhong.uniforms["UCamPosition"].value = NewCameraPosition;
+        shaderProgramObjectPhong.uniforms["UMatViewInv"].value = GLMathLib.flatten(GLMathLib.inverse(MatView));
         var NewLightPosition = GLMathLib.mult(MatCameraRotInv, LightPosition);
-        gl.uniform4fv(shaderVarPhong["ULightPosition"], new Float32Array(NewLightPosition));
-        gl.uniformMatrix4fv(shaderVarPhong["UMatCameraRot"], false, new Float32Array(GLMathLib.flatten(MatCameraRot)));
+        shaderProgramObjectPhong.uniforms["ULightPosition"].value = NewLightPosition;
+        shaderProgramObjectPhong.uniforms["UMatCameraRot"].value = GLMathLib.flatten(MatCameraRot);
 
         // Draw cube.
 
         // Rebind buffers.
-        gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.mesh.vertices);
-        gl.vertexAttribPointer(shaderVarPhong["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.mesh.normals);
-        gl.vertexAttribPointer(shaderVarPhong["AVertexNormal"], 3, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.mesh.indices);
+        gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.vertices);
+        gl.vertexAttribPointer(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.normals);
+        gl.vertexAttribPointer(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation, 3, gl.FLOAT, false, 0, 0);
+        gl.enableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.cube.indices);
+        // gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
 
         // Apply transformations.
         var MatCube = GLMathLib.mat4(1.0);
@@ -253,39 +457,44 @@ function render()
         // Camera Rotation Matrix
         MatCube = GLMathLib.mult(MatCameraRotInv, MatCube);
         MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatCube));
-        gl.uniformMatrix4fv(shaderVarPhong["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatCube)));
+        shaderProgramObjectPhong.uniforms["UMatModel"].value = GLMathLib.flatten(MatCube);
         MatCube = GLMathLib.mult(MatView, MatCube);
         MatCube = GLMathLib.mult(MatProj, MatCube);
-        gl.uniformMatrix4fv(shaderVarPhong["UMatMVP"], false, new Float32Array(GLMathLib.flatten(MatCube)));
-        gl.uniformMatrix4fv(shaderVarPhong["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
+        shaderProgramObjectPhong.uniforms["UMatMVP"].value = GLMathLib.flatten(MatCube);
+        shaderProgramObjectPhong.uniforms["UMatNormal"].value = GLMathLib.flatten(MatNormal);
+
+        shaderProgramObjectPhong.setUniforms();
 
         // Render.
         gl.drawElements(gl.TRIANGLES, Cube.indices.length, gl.UNSIGNED_SHORT, 0);
 
-        // Draw Sphere
+        gl.disableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation);
+        gl.disableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation);
 
-        // Rebind Buffers
-        gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.vertices);
-        gl.vertexAttribPointer(shaderVarPhong["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.normals);
-        gl.vertexAttribPointer(shaderVarPhong["AVertexNormal"], 3, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.sphere.indices);
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
+        // // Draw Sphere
 
-        var MatSphere = GLMathLib.mat4(1.0);
-        MatSphere = GLMathLib.scale(MatSphere, GLMathLib.vec3(2, 2, 2));
-        MatSphere = GLMathLib.translate(MatSphere, GLMathLib.vec3(-3, 0, 0));
-        // Camera Rotation Matrix
-        MatSphere = GLMathLib.mult(MatCameraRotInv, MatSphere);
-        MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatSphere));
-        gl.uniformMatrix4fv(shaderVarPhong["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatSphere)));
-        MatSphere = GLMathLib.mult(MatView, MatSphere);
-        MatSphere = GLMathLib.mult(MatProj, MatSphere);
-        gl.uniformMatrix4fv(shaderVarPhong["UMatMVP"], false, new Float32Array(GLMathLib.flatten(MatSphere)));
-        gl.uniformMatrix4fv(shaderVarPhong["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
+        // // Rebind Buffers
+        // gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.vertices);
+        // gl.vertexAttribPointer(shaderVarPhong["AVertexPosition"], 3, gl.FLOAT, false, 0, 0);
+        // gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.normals);
+        // gl.vertexAttribPointer(shaderVarPhong["AVertexNormal"], 3, gl.FLOAT, false, 0, 0);
+        // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.sphere.indices);
+        // gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
 
-        // Render.
-        gl.drawElements(gl.TRIANGLES, Sphere.indices.length, gl.UNSIGNED_SHORT, 0);
+        // var MatSphere = GLMathLib.mat4(1.0);
+        // MatSphere = GLMathLib.scale(MatSphere, GLMathLib.vec3(2, 2, 2));
+        // MatSphere = GLMathLib.translate(MatSphere, GLMathLib.vec3(-3, 0, 0));
+        // // Camera Rotation Matrix
+        // MatSphere = GLMathLib.mult(MatCameraRotInv, MatSphere);
+        // MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatSphere));
+        // gl.uniformMatrix4fv(shaderVarPhong["UMatModel"], false, new Float32Array(GLMathLib.flatten(MatSphere)));
+        // MatSphere = GLMathLib.mult(MatView, MatSphere);
+        // MatSphere = GLMathLib.mult(MatProj, MatSphere);
+        // gl.uniformMatrix4fv(shaderVarPhong["UMatMVP"], false, new Float32Array(GLMathLib.flatten(MatSphere)));
+        // gl.uniformMatrix4fv(shaderVarPhong["UMatNormal"], false, new Float32Array(GLMathLib.flatten(MatNormal)));
+
+        // // Render.
+        // gl.drawElements(gl.TRIANGLES, Sphere.indices.length, gl.UNSIGNED_SHORT, 0);
     }
 
     // Angle
@@ -386,46 +595,46 @@ function initShaders()
     ////////////////////////////////////////////////////////////////////////////////
     // Phong shader
 
-    // Get the shader GLSL files via XMLHTTPRequest.
-    var vertexShaderPhong = getShaderFromFile(gl, "glsl/vertex.glsl", "vertex");
-    var fragmentShaderPhong = getShaderFromFile(gl, "glsl/fragment.glsl", "fragment");
+    // // Get the shader GLSL files via XMLHTTPRequest.
+    // var vertexShaderPhong = getShaderFromFile(gl, "glsl/vertex.glsl", "vertex");
+    // var fragmentShaderPhong = getShaderFromFile(gl, "glsl/fragment.glsl", "fragment");
 
-    // Create the shader and check if successful.
-    shaderProgramPhong = gl.createProgram();
-    gl.attachShader(shaderProgramPhong, vertexShaderPhong);
-    gl.attachShader(shaderProgramPhong, fragmentShaderPhong);
-    gl.linkProgram(shaderProgramPhong);
-    if (!gl.getProgramParameter(shaderProgramPhong, gl.LINK_STATUS))
-    {
-        console.log("Unable to initialize the shader program!");
-    }
+    // // Create the shader and check if successful.
+    // shaderProgramPhong = gl.createProgram();
+    // gl.attachShader(shaderProgramPhong, vertexShaderPhong);
+    // gl.attachShader(shaderProgramPhong, fragmentShaderPhong);
+    // gl.linkProgram(shaderProgramPhong);
+    // if (!gl.getProgramParameter(shaderProgramPhong, gl.LINK_STATUS))
+    // {
+    //     console.log("Unable to initialize the shader program!");
+    // }
 
     // Attribute variables.
-    SetShaderVars(gl, shaderProgramPhong, shaderVarPhong, "attribute",
-    [
-        "AVertexPosition",
-        "AVertexNormal",
-        "ATextureCoord"
-    ]);
+    // SetShaderVars(gl, shaderProgramPhong, shaderVarPhong, "attribute",
+    // [
+    //     "AVertexPosition",
+    //     "AVertexNormal",
+    //     "ATextureCoord"
+    // ]);
 
-    // Uniform variables.
-    SetShaderVars(gl, shaderProgramPhong, shaderVarPhong, "uniform",
-    [
-        "USkybox",
-        "UEnvMap",
-        "ULightPosition",
-        "UCamPosition",
-        "UCamPosSky",
-        "UAmbientProduct",
-        "UDiffuseProduct",
-        "USpecularProduct",
-        "USamplerCube",
-        "UMatModel",
-        "UMatMVP",
-        "UMatNormal",
-        "UMatViewInv",
-        "UMatCameraRot"
-    ]);
+    // // Uniform variables.
+    // SetShaderVars(gl, shaderProgramPhong, shaderVarPhong, "uniform",
+    // [
+    //     "USkybox",
+    //     "UEnvMap",
+    //     "ULightPosition",
+    //     "UCamPosition",
+    //     "UCamPosSky",
+    //     "UAmbientProduct",
+    //     "UDiffuseProduct",
+    //     "USpecularProduct",
+    //     "USamplerCube",
+    //     "UMatModel",
+    //     "UMatMVP",
+    //     "UMatNormal",
+    //     "UMatViewInv",
+    //     "UMatCameraRot"
+    // ]);
 
     ////////////////////////////////////////////////////////////////////////////////
     // Skybox Shader
@@ -462,12 +671,6 @@ function createMeshBuffer(vertices, normals, indices)
     gl.bindBuffer(gl.ARRAY_BUFFER, result.vertices);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
 
-    // Create vertex indices buffer.
-    result.indices = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, result.indices);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-    gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
     // Create normals buffer, if applicable.
     if (normals != null)
     {
@@ -475,6 +678,11 @@ function createMeshBuffer(vertices, normals, indices)
         gl.bindBuffer(gl.ARRAY_BUFFER, result.normals);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
     }
+
+    // Create vertex indices buffer.
+    result.indices = gl.createBuffer();
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, result.indices);
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
     return result;
 }
@@ -497,10 +705,12 @@ function initBuffers()
 //
 // Initialize the cube map. Code inspiration from
 // http://hristo.oskov.com/projects/cs418/mp3/js/mp3.js and, in
-// a way, three.js's implementation a skybox.
+// a way, three.js's implementation of a skybox.
 //
 function initSkybox(string)
 {
+    skyboxImageLoadCount = 0;
+
     gl.activeTexture(gl.TEXTURE0);
 
     Skybox.texture = gl.createTexture();
@@ -530,7 +740,7 @@ function initSkybox(string)
                 gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
                 gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture)
                 gl.texImage2D(face, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-                gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+                // gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
                 skyboxImageLoadCount++;
             }
         } (Skybox.texture, cubeFaces[i][1], image);

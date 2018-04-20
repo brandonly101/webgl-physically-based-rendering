@@ -1,6 +1,6 @@
 // Copyright Brandon Ly 2015 all rights reserved.
 
-// Small module that handles the creation of meshes and its properties.
+// Small module that handles the creation of meshes and objects and their properties.
 
 "use strict";
 
@@ -29,7 +29,9 @@ class Mesh
     static createCube()
     {
         var result = new Mesh();
-        result.vertices = [
+
+        result.vertices =
+        [
             // Front face
             -1.0, -1.0,  1.0,
             1.0, -1.0,  1.0,
@@ -65,8 +67,10 @@ class Mesh
             -1.0, -1.0,  1.0,
             -1.0,  1.0,  1.0,
             -1.0,  1.0, -1.0
-            ];
-            result.normals = [
+        ];
+
+        result.normals =
+        [
             // Front face
             0.0, 0.0, 1.0,
             0.0, 0.0, 1.0,
@@ -102,15 +106,18 @@ class Mesh
             -1.0, 0.0, 0.0,
             -1.0, 0.0, 0.0,
             -1.0, 0.0, 0.0,
-            ];
-            result.indices = [
+        ];
+
+        result.indices =
+        [
             0,  1,  2,      0,  2,  3,    // front
             4,  5,  6,      4,  6,  7,    // back
             8,  9,  10,     8,  10, 11,   // top
             12, 13, 14,     12, 14, 15,   // bottom
             16, 17, 18,     16, 18, 19,   // right
             20, 21, 22,     20, 22, 23    // left
-            ];
+        ];
+
         return result;
     }
 
