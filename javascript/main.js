@@ -19,12 +19,9 @@ var canvas = document.getElementById("webgl-canvas");
 var gl;
 
 // Other global variables
-var shaderProgramPhong;
 var shaderProgramObjectPhong;
 var shaderProgramObjectSkybox;
-var shaderProgramSkybox;
-var shaderVarPhong = {};
-var shaderVarSkybox = {};
+
 var skyboxImageLoadCount = 0;
 
 // Vertex Buffer variables
@@ -52,12 +49,6 @@ var MaterialDiffuse = GLMathLib.vec4(0.75, 0.1, 0.0, 1.0);
 var MaterialSpecular = GLMathLib.vec4(1.0, 1.0, 1.0, 1.0);
 
 var AmbientProduct, DiffuseProduct, SpecularProduct;
-
-var Camera = {
-    at : GLMathLib.vec3(0.0, 0.0, 0.0),
-    eye : GLMathLib.vec3(0.0, 0.0, 10.0),
-    up : GLMathLib.vec3(0.0, 1.0, 0.0),
-};
 
 var MatModel, MatView, MatProj, MatModelView, MatMVP;
 var MatNormal;
@@ -250,17 +241,11 @@ function init()
         reader.readAsText(file);
         Buffer.mesh = createMeshBuffer(meshRender.vertices, meshRender.normals, meshRender.indices);
     }, false);
-
 }
 
 // Render loop.
 function render()
 {
-    setCanvas();
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    gl.viewport(0, 0, canvas.width, canvas.height);
-
     ////////////////////////////
     // Perform general setup.
 
@@ -276,11 +261,11 @@ function render()
     {
         // Activate the shader.
         gl.useProgram(shaderProgramObjectSkybox.glShaderProgram);
+        gl.enableVertexAttribArray(shaderProgramObjectSkybox.attributes["AVertexPosition"].glLocation);
 
         // Rebind buffers.
         gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.skybox.vertices);
         gl.vertexAttribPointer(shaderProgramObjectSkybox.attributes["AVertexPosition"].glLocation, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(shaderProgramObjectSkybox.attributes["AVertexPosition"].glLocation);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.skybox.indices);
 
         // Apply transformations.
@@ -297,6 +282,8 @@ function render()
 
         // Render.
         gl.drawElements(gl.TRIANGLES, Skybox.indices.length, gl.UNSIGNED_SHORT, 0);
+
+        gl.disableVertexAttribArray(shaderProgramObjectSkybox.attributes["AVertexPosition"].glLocation);
     }
 
     ////////////////////////////
@@ -305,6 +292,8 @@ function render()
     {
         // Activate the shader.
         gl.useProgram(shaderProgramObjectPhong.glShaderProgram);
+        gl.enableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation);
+        gl.enableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation);
 
         // Update general uniforms.
         var NewCameraPosition = GLMathLib.mult(MatCameraRotInv, GLMathLib.vec4(Camera.eye, 1.0));
@@ -319,11 +308,9 @@ function render()
         // Rebind buffers.
         gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.vertices);
         gl.vertexAttribPointer(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.normals);
         gl.vertexAttribPointer(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.cube.indices);
         gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
@@ -349,19 +336,14 @@ function render()
         // Render.
         gl.drawElements(gl.TRIANGLES, Cube.indices.length, gl.UNSIGNED_SHORT, 0);
 
-        gl.disableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation);
-        gl.disableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation);
-
         // Draw Sphere
 
-        // Rebind Buffers
+        // Rebind Buffers.
         gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.vertices);
         gl.vertexAttribPointer(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.normals);
         gl.vertexAttribPointer(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation, 3, gl.FLOAT, false, 0, 0);
-        gl.enableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation);
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.sphere.indices);
         gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
@@ -384,6 +366,10 @@ function render()
 
         // Render.
         gl.drawElements(gl.TRIANGLES, Sphere.indices.length, gl.UNSIGNED_SHORT, 0);
+
+        // Disable shader attributes.
+        gl.disableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation);
+        gl.disableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation);
     }
 
     // Angle
@@ -392,6 +378,13 @@ function render()
     // Call render again because we are looping it.
     window.requestAnimFrame(render, canvas);
 }
+
+window.onresize = () =>
+{
+    // Reset the canvas and viewport whenever the window is resized.
+    setCanvas();
+    gl.viewport(0, 0, canvas.width, canvas.height);
+};
 
 // Load it all!
 window.onload = () =>
@@ -485,6 +478,8 @@ function initSkybox(string)
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 
+    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+
     var cubeFaces =
     [
         ["assets/skybox/" + string + "/posx.jpg", gl.TEXTURE_CUBE_MAP_POSITIVE_X],
@@ -502,10 +497,11 @@ function initSkybox(string)
         {
             return function()
             {
+                gl.activeTexture(gl.TEXTURE0);
                 gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
                 gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture)
                 gl.texImage2D(face, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-                // gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
+                gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
                 skyboxImageLoadCount++;
             }
         } (Skybox.texture, cubeFaces[i][1], image);
