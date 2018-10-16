@@ -24,18 +24,13 @@ var shaderProgramObjectSkybox;
 
 var skyboxImageLoadCount = 0;
 
-// Vertex Buffer variables
-var Buffer = Buffer || {};
-Buffer.cube = {};
-Buffer.sphere = {};
-Buffer.skybox = {};
-Buffer.mesh = {};
-
 // Create a cube and sphere mesh object
-var Cube = Mesh.createCube();
-var meshRender = Mesh.createCube();
-var Sphere = Mesh.createSphere(4);
 var Skybox = Mesh.createCubeMap(500.0);
+
+var RenderObjectCube;
+var RenderObjectSphere;
+var RenderObjectMesh;
+var RenderObjectSkybox;
 
 // Lighting and shading properties.
 var LightPosition = GLMathLib.vec4(0.0, 20.0, 5.0, 0.0);
@@ -54,73 +49,6 @@ var MatModel, MatView, MatProj, MatModelView, MatMVP;
 var MatNormal;
 
 var angle = 0;
-
-// class Object
-// {
-//     constructor(gl,
-//                 mesh,
-//                 attribLocationVertex,
-//                 attribLocationNormal)
-//     {
-//         this.gl = gl;
-//         this.mesh = mesh;
-//         this.attribLocationVertex;
-//         this.attribLocationNormal;
-//         this.buffers = {};
-//     }
-
-//     init()
-//     {
-//         let gl = this.gl;
-
-//         // Create vertices buffer.
-//         this.buffers.vertices = gl.createBuffer();
-//         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.vertices);
-//         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-
-//         // Create normals buffer, if applicable.
-//         if (this.mesh.normals != null)
-//         {
-//             this.buffers.normals = gl.createBuffer();
-//             gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.normals);
-//             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
-
-//         }
-
-//         // Create vertex indices buffer.
-//         this.buffers.indices = gl.createBuffer();
-//         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.indices);
-//         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-//     }
-
-//     render()
-//     {
-//         let gl = this.gl;
-
-//         // Rebind buffers.
-//         gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.mesh.vertices);
-//         gl.vertexAttribPointer(this.attribLocationVertex, 3, gl.FLOAT, false, 0, 0);
-//         gl.enableVertexAttribArray(this.attribLocationVertex);
-
-//         if (this.mesh.normals != null)
-//         {
-//             gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.mesh.normals);
-//             gl.vertexAttribPointer(this.attribLocationNormal, 3, gl.FLOAT, false, 0, 0);
-//             gl.enableVertexAttribArray(this.attribLocationNormal);
-//         }
-//         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.mesh.indices);
-
-//         // draw
-//         // ...
-
-//         // Disable attributes
-//         gl.disableVertexAttribArray(this.attribLocationVertex);
-//         if (this.mesh.normals != null)
-//         {
-//             gl.disableVertexAttribArray(this.attribLocationNormal);
-//         }
-//     }
-// }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Main init and render loops.
@@ -187,7 +115,28 @@ function init()
     });
 
     // Initialize the buffers.
-    initBuffers();
+    RenderObjectCube = new RenderObject(gl, Mesh.createCube(),
+    [
+        shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation,
+        shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation
+    ]);
+    RenderObjectSphere = new RenderObject(gl, Mesh.createSphere(4),
+    [
+        shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation,
+        shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation
+    ]);
+    RenderObjectSkybox = new RenderObject(gl, Skybox,
+    [
+        shaderProgramObjectSkybox.attributes["AVertexPosition"].glLocation
+    ]);
+
+    // var mesh = Mesh.createMesh(FileUtil.GetFile("assets/SkyrimIronClaymore/SkyrimIronClaymore.obj"));
+    var mesh = Mesh.createMesh(FileUtil.GetFile("assets/RZ-0/RZ-0.obj"));
+    RenderObjectMesh = new RenderObject(gl, mesh,
+    [
+        shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation,
+        shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation
+    ]);
 
     // Initialize the skybox.
     initSkybox("Yokohama3");
@@ -261,12 +210,7 @@ function render()
     {
         // Activate the shader.
         gl.useProgram(shaderProgramObjectSkybox.glShaderProgram);
-        gl.enableVertexAttribArray(shaderProgramObjectSkybox.attributes["AVertexPosition"].glLocation);
-
-        // Rebind buffers.
-        gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.skybox.vertices);
-        gl.vertexAttribPointer(shaderProgramObjectSkybox.attributes["AVertexPosition"].glLocation, 3, gl.FLOAT, false, 0, 0);
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.skybox.indices);
+        gl.enableVertexAttribArray(shaderProgramObjectSkybox.attributes.AVertexPosition.glLocation);
 
         // Apply transformations.
         var MatSkybox = GLMathLib.mat4(1.0);
@@ -281,9 +225,9 @@ function render()
         shaderProgramObjectSkybox.setUniforms();
 
         // Render.
-        gl.drawElements(gl.TRIANGLES, Skybox.indices.length, gl.UNSIGNED_SHORT, 0);
+        RenderObjectSkybox.render();
 
-        gl.disableVertexAttribArray(shaderProgramObjectSkybox.attributes["AVertexPosition"].glLocation);
+        gl.disableVertexAttribArray(shaderProgramObjectSkybox.attributes.AVertexPosition.glLocation);
     }
 
     ////////////////////////////
@@ -305,67 +249,69 @@ function render()
 
         // Draw cube.
 
-        // Rebind buffers.
-        gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.vertices);
-        gl.vertexAttribPointer(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation, 3, gl.FLOAT, false, 0, 0);
+        // // Apply transformations.
+        // var MatCube = GLMathLib.mat4(1.0);
+        // MatCube = GLMathLib.scale(MatCube, GLMathLib.vec3(1.3, 1.3, 1.3));
+        // MatCube = GLMathLib.rotate(MatCube, angle/3, GLMathLib.vec3(1, 0, 0));
+        // MatCube = GLMathLib.rotate(MatCube, angle/3, GLMathLib.vec3(0, 1, 0));
+        // MatCube = GLMathLib.translate(MatCube, GLMathLib.vec3(3, 0, 0));
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.cube.normals);
-        gl.vertexAttribPointer(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation, 3, gl.FLOAT, false, 0, 0);
+        // // Camera Rotation Matrix
+        // MatCube = GLMathLib.mult(MatCameraRotInv, MatCube);
+        // MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatCube));
+        // shaderProgramObjectPhong.uniforms["UMatModel"].value = new Float32Array(GLMathLib.flatten(MatCube));
+        // MatCube = GLMathLib.mult(MatView, MatCube);
+        // MatCube = GLMathLib.mult(MatProj, MatCube);
+        // shaderProgramObjectPhong.uniforms["UMatMVP"].value = new Float32Array(GLMathLib.flatten(MatCube));
+        // shaderProgramObjectPhong.uniforms["UMatNormal"].value = new Float32Array(GLMathLib.flatten(MatNormal));
 
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.cube.indices);
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
+        // shaderProgramObjectPhong.setUniforms();
 
-        // Apply transformations.
-        var MatCube = GLMathLib.mat4(1.0);
-        MatCube = GLMathLib.scale(MatCube, GLMathLib.vec3(1.3, 1.3, 1.3));
-        MatCube = GLMathLib.rotate(MatCube, angle/3, GLMathLib.vec3(1, 0, 0));
-        MatCube = GLMathLib.rotate(MatCube, angle/3, GLMathLib.vec3(0, 1, 0));
-        MatCube = GLMathLib.translate(MatCube, GLMathLib.vec3(3, 0, 0));
-
-        // Camera Rotation Matrix
-        MatCube = GLMathLib.mult(MatCameraRotInv, MatCube);
-        MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatCube));
-        shaderProgramObjectPhong.uniforms["UMatModel"].value = new Float32Array(GLMathLib.flatten(MatCube));
-        MatCube = GLMathLib.mult(MatView, MatCube);
-        MatCube = GLMathLib.mult(MatProj, MatCube);
-        shaderProgramObjectPhong.uniforms["UMatMVP"].value = new Float32Array(GLMathLib.flatten(MatCube));
-        shaderProgramObjectPhong.uniforms["UMatNormal"].value = new Float32Array(GLMathLib.flatten(MatNormal));
-
-        shaderProgramObjectPhong.setUniforms();
-
-        // Render.
-        gl.drawElements(gl.TRIANGLES, Cube.indices.length, gl.UNSIGNED_SHORT, 0);
+        // // Render.
+        // RenderObjectCube.render();
 
         // Draw Sphere
 
-        // Rebind Buffers.
-        gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.vertices);
-        gl.vertexAttribPointer(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation, 3, gl.FLOAT, false, 0, 0);
+        // Apply transformations.
+        // var MatSphere = GLMathLib.mat4(1.0);
+        // MatSphere = GLMathLib.scale(MatSphere, GLMathLib.vec3(0.075, 0.075, 0.075));
+        // MatSphere = GLMathLib.translate(MatSphere, GLMathLib.vec3(0, -3, 0));
 
-        gl.bindBuffer(gl.ARRAY_BUFFER, Buffer.sphere.normals);
-        gl.vertexAttribPointer(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation, 3, gl.FLOAT, false, 0, 0);
+        // // Camera Rotation Matrix
+        // MatSphere = GLMathLib.mult(MatCameraRotInv, MatSphere);
+        // MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatSphere));
+        // shaderProgramObjectPhong.uniforms["UMatModel"].value = new Float32Array(GLMathLib.flatten(MatSphere));
+        // MatSphere = GLMathLib.mult(MatView, MatSphere);
+        // MatSphere = GLMathLib.mult(MatProj, MatSphere);
+        // shaderProgramObjectPhong.uniforms["UMatMVP"].value = new Float32Array(GLMathLib.flatten(MatSphere));
+        // shaderProgramObjectPhong.uniforms["UMatNormal"].value = new Float32Array(GLMathLib.flatten(MatNormal));
 
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, Buffer.sphere.indices);
-        gl.bindTexture(gl.TEXTURE_CUBE_MAP, Skybox.texture);
+        // shaderProgramObjectPhong.setUniforms();
+
+        // // Render.
+        // RenderObjectMesh.render();
+
+        // Draw Mesh
 
         // Apply transformations.
-        var MatSphere = GLMathLib.mat4(1.0);
-        MatSphere = GLMathLib.scale(MatSphere, GLMathLib.vec3(2, 2, 2));
-        MatSphere = GLMathLib.translate(MatSphere, GLMathLib.vec3(-3, 0, 0));
+        var MatMesh = GLMathLib.mat4(1.0);
+        // MatMesh = GLMathLib.scale(MatMesh, GLMathLib.vec3(0.1, 0.1, 0.1));
+        MatMesh = GLMathLib.scale(MatMesh, GLMathLib.vec3(0.04, 0.04, 0.04));
+        MatMesh = GLMathLib.translate(MatMesh, GLMathLib.vec3(0, -5, 0));
 
         // Camera Rotation Matrix
-        MatSphere = GLMathLib.mult(MatCameraRotInv, MatSphere);
-        MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatSphere));
-        shaderProgramObjectPhong.uniforms["UMatModel"].value = new Float32Array(GLMathLib.flatten(MatSphere));
-        MatSphere = GLMathLib.mult(MatView, MatSphere);
-        MatSphere = GLMathLib.mult(MatProj, MatSphere);
-        shaderProgramObjectPhong.uniforms["UMatMVP"].value = new Float32Array(GLMathLib.flatten(MatSphere));
+        MatMesh = GLMathLib.mult(MatCameraRotInv, MatMesh);
+        MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatMesh));
+        shaderProgramObjectPhong.uniforms["UMatModel"].value = new Float32Array(GLMathLib.flatten(MatMesh));
+        MatMesh = GLMathLib.mult(MatView, MatMesh);
+        MatMesh = GLMathLib.mult(MatProj, MatMesh);
+        shaderProgramObjectPhong.uniforms["UMatMVP"].value = new Float32Array(GLMathLib.flatten(MatMesh));
         shaderProgramObjectPhong.uniforms["UMatNormal"].value = new Float32Array(GLMathLib.flatten(MatNormal));
 
         shaderProgramObjectPhong.setUniforms();
 
         // Render.
-        gl.drawElements(gl.TRIANGLES, Sphere.indices.length, gl.UNSIGNED_SHORT, 0);
+        RenderObjectMesh.render();
 
         // Disable shader attributes.
         gl.disableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation);
@@ -419,46 +365,6 @@ function setCanvas()
     canvas.setAttribute("height", String(canvasHeight));
 }
 
-function createMeshBuffer(vertices, normals, indices)
-{
-    var result = {};
-
-    // Create vertices buffer.
-    result.vertices = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, result.vertices);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
-
-    // Create normals buffer, if applicable.
-    if (normals != null)
-    {
-        result.normals = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, result.normals);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normals), gl.STATIC_DRAW);
-    }
-
-    // Create vertex indices buffer.
-    result.indices = gl.createBuffer();
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, result.indices);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-
-    return result;
-}
-
-// Initialize Buffers.
-function initBuffers()
-{
-    // Create buffers for the skybox.
-    Buffer.skybox = createMeshBuffer(Skybox.vertices, null, Skybox.indices);
-
-    // Create buffers for the cube.
-    Buffer.cube = createMeshBuffer(Cube.vertices, Cube.normals, Cube.indices);
-
-    // Create buffers for the sphere.
-    Buffer.sphere = createMeshBuffer(Sphere.vertices, Sphere.normals, Sphere.indices);
-
-    Buffer.mesh = createMeshBuffer(meshRender.vertices, meshRender.normals, meshRender.indices);
-}
-
 //
 // Initialize the cube map. Code inspiration from
 // http://hristo.oskov.com/projects/cs418/mp3/js/mp3.js and, in
@@ -477,8 +383,6 @@ function initSkybox(string)
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-
-    gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
 
     var cubeFaces =
     [
@@ -501,7 +405,6 @@ function initSkybox(string)
                 gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
                 gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture)
                 gl.texImage2D(face, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
-                gl.bindTexture(gl.TEXTURE_CUBE_MAP, null);
                 skyboxImageLoadCount++;
             }
         } (Skybox.texture, cubeFaces[i][1], image);

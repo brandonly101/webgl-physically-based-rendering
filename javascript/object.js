@@ -9,9 +9,10 @@ class Mesh
 {
     constructor()
     {
-        this.vertices = [];
-        this.normals = [];
-        this.indices = [];
+        this.vertices = null;
+        this.texcoords = null;
+        this.normals = null;
+        this.indices = null;
 
         this.materialAmbient = [1.0, 1.0, 1.0, 1.0];
         this.materialDiffuse = [1.0, 1.0, 1.0, 1.0];
@@ -23,6 +24,46 @@ class Mesh
     {
         // TODO: Implement an OBJ parser...
 
+        var result = new Mesh();
+
+        result.vertices = [];
+        result.texcoords = [];
+        result.normals = [];
+        result.indices = [];
+
+        var arrObjLines = src.split("\n");
+        arrObjLines.forEach((elem) =>
+        {
+            var arrElem = elem.replace(/\s{2,}/g, ' ').split(" ");
+            switch (arrElem[0])
+            {
+            case "v":
+                result.vertices.push(Number.parseFloat(arrElem[1]));
+                result.vertices.push(Number.parseFloat(arrElem[2]));
+                result.vertices.push(Number.parseFloat(arrElem[3]));
+                break;
+            case "vt":
+                result.texcoords.push(Number.parseFloat(arrElem[1]));
+                result.texcoords.push(Number.parseFloat(arrElem[2]));
+                result.texcoords.push(Number.parseFloat(arrElem[3]));
+                break;
+            case "vn":
+                result.normals.push(Number.parseFloat(arrElem[1]));
+                result.normals.push(Number.parseFloat(arrElem[2]));
+                result.normals.push(Number.parseFloat(arrElem[3]));
+                break;
+            case "f":
+                let arrFaces = arrElem[1].split("/");
+                result.indices.push(Number.parseFloat(arrFaces[0]) - 1);
+                arrFaces = arrElem[2].split("/");
+                result.indices.push(Number.parseFloat(arrFaces[0]) - 1);
+                arrFaces = arrElem[3].split("/");
+                result.indices.push(Number.parseFloat(arrFaces[0]) - 1);
+                break;
+            }
+        });
+
+        return result;
     };
 
     // Create a cube mesh.
@@ -182,7 +223,8 @@ class Mesh
     static createCubeMap(length)
     {
         var result = new Mesh();
-        result.vertices = [
+        result.vertices =
+        [
             // Front face
             -length, -length, -length,
             length, -length, -length,
@@ -219,44 +261,46 @@ class Mesh
             length,  length,  length,
             length,  length, -length,
         ];
-    // result.texCoords = [
-    //     // Front
-    //     0.0,  0.0,
-    //     1.0,  0.0,
-    //     1.0,  1.0,
-    //     0.0,  1.0,
-    //     // Back
-    //     0.0,  0.0,
-    //     1.0,  0.0,
-    //     1.0,  1.0,
-    //     0.0,  1.0,
-    //     // Top
-    //     0.0,  0.0,
-    //     1.0,  0.0,
-    //     1.0,  1.0,
-    //     0.0,  1.0,
-    //     // Bottom
-    //     0.0,  0.0,
-    //     1.0,  0.0,
-    //     1.0,  1.0,
-    //     0.0,  1.0,
-    //     // Right
-    //     0.0,  0.0,
-    //     1.0,  0.0,
-    //     1.0,  1.0,
-    //     0.0,  1.0,
-    //     // Right
-    //     0.0,  0.0,
-    //     1.0,  0.0,
-    //     1.0,  1.0,
-    //     0.0,  1.0,
-    //     // Left
-    //     0.0,  0.0,
-    //     1.0,  0.0,
-    //     1.0,  1.0,
-    //     0.0,  1.0
-    // ];
-        result.texCoords = [
+        result.texCoords =
+        [
+            // Front
+            0.0,  0.0,
+            1.0,  0.0,
+            1.0,  1.0,
+            0.0,  1.0,
+            // Back
+            0.0,  0.0,
+            1.0,  0.0,
+            1.0,  1.0,
+            0.0,  1.0,
+            // Top
+            0.0,  0.0,
+            1.0,  0.0,
+            1.0,  1.0,
+            0.0,  1.0,
+            // Bottom
+            0.0,  0.0,
+            1.0,  0.0,
+            1.0,  1.0,
+            0.0,  1.0,
+            // Right
+            0.0,  0.0,
+            1.0,  0.0,
+            1.0,  1.0,
+            0.0,  1.0,
+            // Right
+            0.0,  0.0,
+            1.0,  0.0,
+            1.0,  1.0,
+            0.0,  1.0,
+            // Left
+            0.0,  0.0,
+            1.0,  0.0,
+            1.0,  1.0,
+            0.0,  1.0
+        ];
+        result.texCoords =
+        [
             // Front face
             -length, -length, -length,
             length, -length, -length,
@@ -292,8 +336,9 @@ class Mesh
             length, -length,  length,
             length,  length,  length,
             length,  length, -length,
-            ];
-            result.indices = [
+        ];
+        result.indices =
+        [
             0,  1,  2,      0,  2,  3,    // front
             4,  5,  6,      4,  6,  7,    // back
             8,  9,  10,     8,  10, 11,   // top
@@ -320,4 +365,56 @@ class Mesh
         };
         reader.readAsText(file);
     };
+}
+
+class RenderObject
+{
+    constructor(gl,
+                mesh,
+                glAttribLocations)
+    {
+        this.gl = gl;
+        this.mesh = mesh;
+        this.glAttribLocations = glAttribLocations;
+        this.buffers = {};
+
+        // Create vertices buffer.
+        this.buffers.vertices = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.vertices);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.vertices), gl.STATIC_DRAW);
+
+        // Create normals buffer, if applicable.
+        if (mesh.normals != null)
+        {
+            this.buffers.normals = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.normals);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.normals), gl.STATIC_DRAW);
+        }
+
+        // Create vertex indices buffer.
+        this.buffers.indices = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.indices);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(mesh.indices), gl.STATIC_DRAW);
+    }
+
+    render()
+    {
+        let gl = this.gl;
+        let mesh = this.mesh;
+        let buffers = this.buffers;
+
+        // Rebind buffers.
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
+        gl.vertexAttribPointer(this.glAttribLocations[0], 3, gl.FLOAT, false, 0, 0);
+
+        if (mesh.normals != null && mesh.normals.length != 0)
+        {
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
+            gl.vertexAttribPointer(this.glAttribLocations[1], 3, gl.FLOAT, false, 0, 0);
+        }
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+
+        // draw
+        gl.drawElements(gl.TRIANGLES, mesh.indices.length, gl.UNSIGNED_SHORT, 0);
+    }
 }
