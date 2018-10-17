@@ -14,7 +14,8 @@ Control.var =
     lastMouseY: 0.0,
     currMouseX: 0.0,
     currMouseY: 0.0,
-    mouseSensitivity: 10.0
+    mouseSensitivity: 10.0,
+    mouseScroll: 1.0
 }
 
 Control.init = function()
@@ -22,6 +23,7 @@ Control.init = function()
     document.addEventListener("mousedown", this.onDocumentMouseDown);
     document.addEventListener("mouseup", this.onDocumentMouseUp);
     document.addEventListener("mousemove", this.onDocumentMouseMove);
+    document.addEventListener("wheel", this.onDocumentMouseScroll);
 };
 
 Control.onDocumentMouseDown = function(e)
@@ -53,6 +55,13 @@ Control.onDocumentMouseMove = function(e)
         Control.var.angleX = (newMouseX - Control.var.lastMouseX + Control.var.currMouseX);
         Control.var.angleY = (newMouseY - Control.var.lastMouseY + Control.var.currMouseY);
     }
+};
+
+Control.onDocumentMouseScroll = function(e)
+{
+    e = e || window.event;
+    e.preventDefault();
+    Control.var.mouseScroll += e.deltaY;
 };
 
 Control.setMouseSensitivity = function(sensitivity)

@@ -13,6 +13,8 @@ class Mesh
         this.texcoords = null;
         this.normals = null;
         this.indices = null;
+        this.indicesNum = 0;
+        this.bUseDrawArrays = false;
 
         this.materialAmbient = [1.0, 1.0, 1.0, 1.0];
         this.materialDiffuse = [1.0, 1.0, 1.0, 1.0];
@@ -22,8 +24,6 @@ class Mesh
     // Create a mesh from a source file.
     static createMesh(src)
     {
-        // TODO: Implement an OBJ parser...
-
         var result = new Mesh();
 
         result.vertices = [];
@@ -31,37 +31,89 @@ class Mesh
         result.normals = [];
         result.indices = [];
 
+        let vertices = [];
+        let texcoords = [];
+        let normals = [];
+        let faces = [];
+
         var arrObjLines = src.split("\n");
         arrObjLines.forEach((elem) =>
         {
-            var arrElem = elem.replace(/\s{2,}/g, ' ').split(" ");
+            let arrElem = elem.replace(/\s{2,}/g, ' ').split(" ");
             switch (arrElem[0])
             {
             case "v":
-                result.vertices.push(Number.parseFloat(arrElem[1]));
-                result.vertices.push(Number.parseFloat(arrElem[2]));
-                result.vertices.push(Number.parseFloat(arrElem[3]));
+                vertices.push(
+                {
+                    "x": Number.parseFloat(arrElem[1]),
+                    "y": Number.parseFloat(arrElem[2]),
+                    "z": Number.parseFloat(arrElem[3])
+                });
                 break;
             case "vt":
-                result.texcoords.push(Number.parseFloat(arrElem[1]));
-                result.texcoords.push(Number.parseFloat(arrElem[2]));
-                result.texcoords.push(Number.parseFloat(arrElem[3]));
+                texcoords.push(
+                {
+                    "u": Number.parseFloat(arrElem[1]),
+                    "v": Number.parseFloat(arrElem[2])
+                });
                 break;
             case "vn":
-                result.normals.push(Number.parseFloat(arrElem[1]));
-                result.normals.push(Number.parseFloat(arrElem[2]));
-                result.normals.push(Number.parseFloat(arrElem[3]));
+                normals.push(
+                {
+                    "x": Number.parseFloat(arrElem[1]),
+                    "y": Number.parseFloat(arrElem[2]),
+                    "z": Number.parseFloat(arrElem[3])
+                });
                 break;
             case "f":
-                let arrFaces = arrElem[1].split("/");
-                result.indices.push(Number.parseFloat(arrFaces[0]) - 1);
-                arrFaces = arrElem[2].split("/");
-                result.indices.push(Number.parseFloat(arrFaces[0]) - 1);
-                arrFaces = arrElem[3].split("/");
-                result.indices.push(Number.parseFloat(arrFaces[0]) - 1);
+                for (let i = 1; i <= 3; i++)
+                {
+                    let vertexIndex = 0;
+                    let texcoordIndex = 0;
+                    let normalIndex = 0;
+
+                    let arrFaces = arrElem[i].split("/");
+                    vertexIndex = Number.parseInt(arrFaces[0]) - 1;
+                    if (!Number.isNaN(Number.parseFloat(arrFaces[1])))
+                    {
+                        texcoordIndex = Number.parseFloat(arrFaces[1]) - 1;
+                    }
+                    if (!Number.isNaN(Number.parseInt(arrFaces[2])))
+                    {
+                        normalIndex = Number.parseInt(arrFaces[2]) - 1;
+                    }
+                    faces.push(
+                    {
+                        "vertexIndex": vertexIndex,
+                        "texcoordIndex": texcoordIndex,
+                        "normalIndex": normalIndex
+                    });
+                }
                 break;
             }
         });
+
+        // Indicate that we want to use gl.drawArrays() for complex models (for now).
+        // Not performant, but maybe some day when I figure out how to properly
+        // use an indices array with a format that is not 16-bit.
+        result.indicesNum = faces.length;
+        result.bUseDrawArrays = true;
+
+        for (let i = 0; i < faces.length; i++)
+        {
+            let face = faces[i];
+
+            result.vertices.push(vertices[face.vertexIndex].x);
+            result.vertices.push(vertices[face.vertexIndex].y);
+            result.vertices.push(vertices[face.vertexIndex].z);
+
+            result.texcoords.push(texcoords[face.texcoordIndex].u);
+            result.texcoords.push(texcoords[face.texcoordIndex].v);
+
+            result.normals.push(normals[face.normalIndex].x);
+            result.normals.push(normals[face.normalIndex].y);
+            result.normals.push(normals[face.normalIndex].z);
+        }
 
         return result;
     };
@@ -377,6 +429,7 @@ class RenderObject
         this.mesh = mesh;
         this.glAttribLocations = glAttribLocations;
         this.buffers = {};
+        this.bIsDrawArrays = false;
 
         // Create vertices buffer.
         this.buffers.vertices = gl.createBuffer();
@@ -391,10 +444,13 @@ class RenderObject
             gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.normals), gl.STATIC_DRAW);
         }
 
-        // Create vertex indices buffer.
-        this.buffers.indices = gl.createBuffer();
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.indices);
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(mesh.indices), gl.STATIC_DRAW);
+        if (!mesh.bUseDrawArrays)
+        {
+            // Create vertex indices buffer.
+            this.buffers.indices = gl.createBuffer();
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.indices);
+            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(mesh.indices), gl.STATIC_DRAW);
+        }
     }
 
     render()
@@ -412,9 +468,16 @@ class RenderObject
             gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
             gl.vertexAttribPointer(this.glAttribLocations[1], 3, gl.FLOAT, false, 0, 0);
         }
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
 
         // draw
-        gl.drawElements(gl.TRIANGLES, mesh.indices.length, gl.UNSIGNED_SHORT, 0);
+        if (this.mesh.bUseDrawArrays)
+        {
+            gl.drawArrays(gl.TRIANGLES, 0, mesh.indicesNum);
+        }
+        else
+        {
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+            gl.drawElements(gl.TRIANGLES, mesh.indices.length, gl.UNSIGNED_SHORT, 0);
+        }
     }
 }

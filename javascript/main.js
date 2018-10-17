@@ -200,21 +200,31 @@ function render()
 
     // Create the camera rotation matrices.
     var MatCameraRot = GLMathLib.mat4(1.0);
+    MatCameraRot = GLMathLib.translate(MatCameraRot, GLMathLib.vec3(0, 0, Control.var.mouseScroll));
     MatCameraRot = GLMathLib.rotate(MatCameraRot, -Control.var.angleY/Control.var.mouseSensitivity, GLMathLib.vec3(1, 0, 0));
     MatCameraRot = GLMathLib.rotate(MatCameraRot, -Control.var.angleX/Control.var.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
+
+    var MatCameraRotSkybox = GLMathLib.mat4(1.0);
+    MatCameraRotSkybox = GLMathLib.rotate(MatCameraRotSkybox, -Control.var.angleY/Control.var.mouseSensitivity, GLMathLib.vec3(1, 0, 0));
+    MatCameraRotSkybox = GLMathLib.rotate(MatCameraRotSkybox, -Control.var.angleX/Control.var.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
+
     var MatCameraRotInv = GLMathLib.inverse(MatCameraRot);
+    var MatCameraRotSkyboxInv = GLMathLib.inverse(MatCameraRotSkybox);
 
     ////////////////////////////
     // Draw skybox.
     if (skyboxImageLoadCount === 6)
     {
+        gl.disable(gl.DEPTH_TEST);
+        gl.depthMask(false);
+
         // Activate the shader.
         gl.useProgram(shaderProgramObjectSkybox.glShaderProgram);
         gl.enableVertexAttribArray(shaderProgramObjectSkybox.attributes.AVertexPosition.glLocation);
 
         // Apply transformations.
         var MatSkybox = GLMathLib.mat4(1.0);
-        MatSkybox = GLMathLib.mult(MatCameraRotInv, MatSkybox);
+        MatSkybox = GLMathLib.mult(MatCameraRotSkyboxInv, MatSkybox);
         MatSkybox = GLMathLib.mult(MatModel, MatSkybox);
         MatSkybox = GLMathLib.mult(MatView, MatSkybox);
         MatSkybox = GLMathLib.mult(MatProj, MatSkybox);
@@ -228,6 +238,9 @@ function render()
         RenderObjectSkybox.render();
 
         gl.disableVertexAttribArray(shaderProgramObjectSkybox.attributes.AVertexPosition.glLocation);
+
+        gl.depthMask(true);
+        gl.enable(gl.DEPTH_TEST);
     }
 
     ////////////////////////////
