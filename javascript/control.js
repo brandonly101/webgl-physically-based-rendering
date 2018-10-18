@@ -61,7 +61,7 @@ Control.onDocumentMouseScroll = function(e)
 {
     e = e || window.event;
     e.preventDefault();
-    Control.var.mouseScroll += e.deltaY;
+    Control.var.mouseScroll += e.deltaY * 0.1;
 };
 
 Control.setMouseSensitivity = function(sensitivity)

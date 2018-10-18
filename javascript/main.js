@@ -198,16 +198,18 @@ function render()
     ////////////////////////////
     // Perform general setup.
 
-    // Create the camera rotation matrices.
+    // Create the camera transformation matrices.
     var MatCameraRot = GLMathLib.mat4(1.0);
     MatCameraRot = GLMathLib.translate(MatCameraRot, GLMathLib.vec3(0, 0, Control.var.mouseScroll));
     MatCameraRot = GLMathLib.rotate(MatCameraRot, -Control.var.angleY/Control.var.mouseSensitivity, GLMathLib.vec3(1, 0, 0));
     MatCameraRot = GLMathLib.rotate(MatCameraRot, -Control.var.angleX/Control.var.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
 
+    // Create a transformation matrix for only the skybox.
     var MatCameraRotSkybox = GLMathLib.mat4(1.0);
     MatCameraRotSkybox = GLMathLib.rotate(MatCameraRotSkybox, -Control.var.angleY/Control.var.mouseSensitivity, GLMathLib.vec3(1, 0, 0));
     MatCameraRotSkybox = GLMathLib.rotate(MatCameraRotSkybox, -Control.var.angleX/Control.var.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
 
+    // Calculate the inverse transformation matrices for the camera and skybox transformation matrices.
     var MatCameraRotInv = GLMathLib.inverse(MatCameraRot);
     var MatCameraRotSkyboxInv = GLMathLib.inverse(MatCameraRotSkybox);
 

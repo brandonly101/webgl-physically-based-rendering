@@ -429,7 +429,6 @@ class RenderObject
         this.mesh = mesh;
         this.glAttribLocations = glAttribLocations;
         this.buffers = {};
-        this.bIsDrawArrays = false;
 
         // Create vertices buffer.
         this.buffers.vertices = gl.createBuffer();
