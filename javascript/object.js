@@ -9,27 +9,29 @@ class Mesh
 {
     constructor()
     {
-        this.vertices = null;
-        this.texcoords = null;
-        this.normals = null;
-        this.indices = null;
-        this.indicesNum = 0;
-        this.bUseDrawArrays = false;
+        this.meshParts = null;
 
-        this.materialAmbient = [1.0, 1.0, 1.0, 1.0];
-        this.materialDiffuse = [1.0, 1.0, 1.0, 1.0];
-        this.materialSpecular = [1.0, 1.0, 1.0, 1.0];
+        this.materialUse = null;
+
+        this.albedoTexture = null;
+        this.normalTexture = null;
+
+        this.bUseDrawArrays = false;
+        this.bUseAlbedoTexture = false;
+        this.bLoadedAlbedoTexture = false;
+        this.bUseNormalTexture = false;
+        this.bLoadedNormalTexture = false;
     }
 
     // Create a mesh from a source file.
-    static createMesh(src)
+    static createMesh(gl, src, srcAlbedo = null, srcNormal = null)
     {
         var result = new Mesh();
 
-        result.vertices = [];
-        result.texcoords = [];
-        result.normals = [];
-        result.indices = [];
+        result.meshParts = [];
+
+        let materialFaceIndices = [];
+        result.materialUse = [];
 
         let vertices = [];
         let texcoords = [];
@@ -37,11 +39,20 @@ class Mesh
         let faces = [];
 
         var arrObjLines = src.split("\n");
+        var faceToRender = 0;
         arrObjLines.forEach((elem) =>
         {
-            let arrElem = elem.replace(/\s{2,}/g, ' ').split(" ");
+            let arrElem = elem.split(" ");
             switch (arrElem[0])
             {
+            case "g":
+                // if (arrElem[1].match("IronClaymore:0"))
+                // {
+                //     faceToRender = faces.length;
+                // }
+                materialFaceIndices.push(faces.length);
+                result.materialUse.push(true);
+                break;
             case "v":
                 vertices.push(
                 {
@@ -54,7 +65,7 @@ class Mesh
                 texcoords.push(
                 {
                     "u": Number.parseFloat(arrElem[1]),
-                    "v": Number.parseFloat(arrElem[2])
+                    "v": 1.0 - Number.parseFloat(arrElem[2])
                 });
                 break;
             case "vn":
@@ -97,23 +108,99 @@ class Mesh
         // Not performant, but maybe some day when I figure out how to properly
         // use an indices array with a format that is not 16-bit.
         result.indicesNum = faces.length;
-        result.bUseDrawArrays = true;
+        // result.bUseDrawArrays = true;
 
+        result.meshParts = [];
+        let meshPart;
+        let meshPartLastIndex = 0;
         for (let i = 0; i < faces.length; i++)
         {
+            if (i == materialFaceIndices[result.meshParts.length])
+            {
+                result.meshParts.push({});
+                meshPart = result.meshParts[result.meshParts.length - 1];
+
+                meshPart.vertices = [];
+                meshPart.texcoords = [];
+                meshPart.normals = [];
+                meshPart.indices = [];
+
+                meshPartLastIndex = i;
+            }
+
             let face = faces[i];
 
-            result.vertices.push(vertices[face.vertexIndex].x);
-            result.vertices.push(vertices[face.vertexIndex].y);
-            result.vertices.push(vertices[face.vertexIndex].z);
+            meshPart.vertices.push(vertices[face.vertexIndex].x);
+            meshPart.vertices.push(vertices[face.vertexIndex].y);
+            meshPart.vertices.push(vertices[face.vertexIndex].z);
 
-            result.texcoords.push(texcoords[face.texcoordIndex].u);
-            result.texcoords.push(texcoords[face.texcoordIndex].v);
+            if (srcAlbedo != null)
+            {
+                meshPart.texcoords.push(texcoords[face.texcoordIndex].u);
+                meshPart.texcoords.push(texcoords[face.texcoordIndex].v);
+            }
 
-            result.normals.push(normals[face.normalIndex].x);
-            result.normals.push(normals[face.normalIndex].y);
-            result.normals.push(normals[face.normalIndex].z);
+            if (srcNormal == null)
+            {
+                if (normals.length != 0)
+                {
+                    meshPart.normals.push(normals[face.normalIndex].x);
+                    meshPart.normals.push(normals[face.normalIndex].y);
+                    meshPart.normals.push(normals[face.normalIndex].z);
+                }
+                else
+                {
+                    meshPart.normals.push(0);
+                    meshPart.normals.push(0);
+                    meshPart.normals.push(0);
+                }
+            }
+
+            if (!result.bUseDrawArrays)
+            {
+                meshPart.indices.push(i - meshPartLastIndex);
+            }
         }
+
+        const albedoTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, albedoTexture);
+
+        // Because images have to be download over the internet
+        // they might take a moment until they are ready.
+        // Until then put a single pixel in the texture so we can
+        // use it immediately. When the image has finished downloading
+        // we'll update the texture with the contents of the image.
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([253, 40, 252, 255]));
+
+        let albedoImage = FileUtil.LoadImage(srcAlbedo != null ? srcAlbedo : "", () =>
+        {
+            function isPowerOf2(value)
+            {
+                return (value & (value - 1)) == 0;
+            }
+
+            gl.bindTexture(gl.TEXTURE_2D, albedoTexture);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, albedoImage);
+
+            // WebGL1 has different requirements for power of 2 images
+            // vs non power of 2 images so check if the image is a
+            // power of 2 in both dimensions.
+            if (isPowerOf2(albedoImage.width) && isPowerOf2(albedoImage.height))
+            {
+                // Yes, it's a power of 2. Generate mips.
+                gl.generateMipmap(gl.TEXTURE_2D);
+            }
+            else
+            {
+                // No, it's not a power of 2. Turn off mips and set
+                // wrapping to clamp to edge
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+            }
+        });
+
+        result.albedoTexture = albedoTexture;
 
         return result;
     };
@@ -122,8 +209,9 @@ class Mesh
     static createCube()
     {
         var result = new Mesh();
+        result.meshParts = [{}];
 
-        result.vertices =
+        result.meshParts[0].vertices =
         [
             // Front face
             -1.0, -1.0,  1.0,
@@ -162,7 +250,7 @@ class Mesh
             -1.0,  1.0, -1.0
         ];
 
-        result.normals =
+        result.meshParts[0].normals =
         [
             // Front face
             0.0, 0.0, 1.0,
@@ -201,7 +289,7 @@ class Mesh
             -1.0, 0.0, 0.0,
         ];
 
-        result.indices =
+        result.meshParts[0].indices =
         [
             0,  1,  2,      0,  2,  3,    // front
             4,  5,  6,      4,  6,  7,    // back
@@ -218,9 +306,15 @@ class Mesh
     static createSphere(nDiv)
     {
         var result = new Mesh();
-        result.vertices = [];
-        result.normals = [];
-        result.indices = [];
+        result.meshParts = [{}];
+
+        result.meshParts[0].vertices = [];
+        result.meshParts[0].normals = [];
+        result.meshParts[0].indices = [];
+
+        let vertices = result.meshParts[0].vertices;
+        let normals = result.meshParts[0].normals;
+        let indices = result.meshParts[0].indices;
 
         var va = [0, 0, -1];
         var vb = [0.0, 0.942809, 0.333333];
@@ -232,17 +326,17 @@ class Mesh
             function triangle(a, b, c)
             {
                 // Vertices
-                result.indices.push(result.vertices.length/3);
-                result.vertices = result.vertices.concat(a);
-                result.indices.push(result.vertices.length/3);
-                result.vertices = result.vertices.concat(b);
-                result.indices.push(result.vertices.length/3);
-                result.vertices = result.vertices.concat(c);
+                indices.push(vertices.length/3);
+                vertices = vertices.concat(a);
+                indices.push(vertices.length/3);
+                vertices = vertices.concat(b);
+                indices.push(vertices.length/3);
+                vertices = vertices.concat(c);
 
                 // Normals
-                result.normals = result.normals.concat(a);
-                result.normals = result.normals.concat(b);
-                result.normals = result.normals.concat(c);
+                normals = normals.concat(a);
+                normals = normals.concat(b);
+                normals = normals.concat(c);
             }
             function divideTriangle(a, b, c, count)
             {
@@ -275,7 +369,9 @@ class Mesh
     static createCubeMap(length)
     {
         var result = new Mesh();
-        result.vertices =
+        result.meshParts = [{}];
+
+        result.meshParts[0].vertices =
         [
             // Front face
             -length, -length, -length,
@@ -313,83 +409,8 @@ class Mesh
             length,  length,  length,
             length,  length, -length,
         ];
-        result.texCoords =
-        [
-            // Front
-            0.0,  0.0,
-            1.0,  0.0,
-            1.0,  1.0,
-            0.0,  1.0,
-            // Back
-            0.0,  0.0,
-            1.0,  0.0,
-            1.0,  1.0,
-            0.0,  1.0,
-            // Top
-            0.0,  0.0,
-            1.0,  0.0,
-            1.0,  1.0,
-            0.0,  1.0,
-            // Bottom
-            0.0,  0.0,
-            1.0,  0.0,
-            1.0,  1.0,
-            0.0,  1.0,
-            // Right
-            0.0,  0.0,
-            1.0,  0.0,
-            1.0,  1.0,
-            0.0,  1.0,
-            // Right
-            0.0,  0.0,
-            1.0,  0.0,
-            1.0,  1.0,
-            0.0,  1.0,
-            // Left
-            0.0,  0.0,
-            1.0,  0.0,
-            1.0,  1.0,
-            0.0,  1.0
-        ];
-        result.texCoords =
-        [
-            // Front face
-            -length, -length, -length,
-            length, -length, -length,
-            length,  length, -length,
-            -length,  length, -length,
-
-            // Back face
-            -length, -length,  length,
-            -length,  length,  length,
-            length,  length,  length,
-            length, -length,  length,
-
-            // Top face
-            -length, -length, -length,
-            -length, -length,  length,
-            length, -length,  length,
-            length, -length, -length,
-
-            // Bottom face
-            -length,  length, -length,
-            length,  length, -length,
-            length,  length,  length,
-            -length,  length,  length,
-
-            // Right face
-            -length, -length, -length,
-            -length,  length, -length,
-            -length,  length,  length,
-            -length, -length,  length,
-
-            // Left face
-            length, -length, -length,
-            length, -length,  length,
-            length,  length,  length,
-            length,  length, -length,
-        ];
-        result.indices =
+        result.meshParts[0].texCoords = [result.meshParts[0].vertices];
+        result.meshParts[0].indices =
         [
             0,  1,  2,      0,  2,  3,    // front
             4,  5,  6,      4,  6,  7,    // back
@@ -427,56 +448,100 @@ class RenderObject
     {
         this.gl = gl;
         this.mesh = mesh;
+        this.bufferParts = [];
         this.glAttribLocations = glAttribLocations;
-        this.buffers = {};
 
-        // Create vertices buffer.
-        this.buffers.vertices = gl.createBuffer();
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.vertices);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.vertices), gl.STATIC_DRAW);
-
-        // Create normals buffer, if applicable.
-        if (mesh.normals != null)
+        for (let i = 0; i < mesh.meshParts.length; i++)
         {
-            this.buffers.normals = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.normals);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.normals), gl.STATIC_DRAW);
-        }
+            let buffers = {};
 
-        if (!mesh.bUseDrawArrays)
-        {
-            // Create vertex indices buffer.
-            this.buffers.indices = gl.createBuffer();
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.buffers.indices);
-            gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(mesh.indices), gl.STATIC_DRAW);
+            // Create vertices buffer.
+            buffers.vertices = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.meshParts[i].vertices), gl.STATIC_DRAW);
+
+            if (mesh.meshParts[i].texcoords != null)
+            {
+                buffers.texcoords = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.texcoords);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.meshParts[i].texcoords), gl.STATIC_DRAW);
+            }
+
+            // Create normals buffer, if applicable.
+            if (mesh.meshParts[i].normals != null)
+            {
+                buffers.normals = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.meshParts[i].normals), gl.STATIC_DRAW);
+            }
+
+            // if (!mesh.meshParts[i].bUseDrawArrays)
+            {
+                // Create vertex indices buffer.
+                buffers.indices = gl.createBuffer();
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(mesh.meshParts[i].indices), gl.STATIC_DRAW);
+            }
+
+            this.bufferParts.push(buffers);
         }
     }
 
     render()
     {
-        let gl = this.gl;
-        let mesh = this.mesh;
-        let buffers = this.buffers;
+        const gl = this.gl;
+        const mesh = this.mesh;
+        const bufferParts = this.bufferParts;
 
-        // Rebind buffers.
-        gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
-        gl.vertexAttribPointer(this.glAttribLocations[0], 3, gl.FLOAT, false, 0, 0);
+        for (let i = 0; i < mesh.meshParts.length; i++)
+        {
+            if (mesh.materialUse !== null && mesh.materialUse[i] === false)
+            {
+                continue;
+            }
 
-        if (mesh.normals != null && mesh.normals.length != 0)
-        {
-            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
-            gl.vertexAttribPointer(this.glAttribLocations[1], 3, gl.FLOAT, false, 0, 0);
-        }
+            const meshPart = mesh.meshParts[i];
+            const buffers = bufferParts[i];
 
-        // draw
-        if (this.mesh.bUseDrawArrays)
-        {
-            gl.drawArrays(gl.TRIANGLES, 0, mesh.indicesNum);
-        }
-        else
-        {
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-            gl.drawElements(gl.TRIANGLES, mesh.indices.length, gl.UNSIGNED_SHORT, 0);
+            // If not ready to render, break out.
+            if (mesh.bUseAlbedoTexture && !mesh.bLoadedAlbedoTexture ||
+                mesh.bUseNormalTexture && !mesh.bLoadedNormalTexture)
+            {
+                return;
+            }
+
+            // Rebind buffers.
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
+            gl.vertexAttribPointer(this.glAttribLocations[0], 3, gl.FLOAT, false, 0, 0);
+
+            if (meshPart.texcoords != null && meshPart.texcoords.length != 0)
+            {
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.texcoords);
+                gl.vertexAttribPointer(this.glAttribLocations[1], 2, gl.FLOAT, false, 0, 0);
+            }
+
+            if (meshPart.normals != null && meshPart.normals.length != 0)
+            {
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
+                gl.vertexAttribPointer(this.glAttribLocations[2], 3, gl.FLOAT, false, 0, 0);
+            }
+
+            if (meshPart.albedoTexture != null)
+            {
+                gl.activeTexture(gl.TEXTURE1);
+                gl.bindTexture(gl.TEXTURE_2D, meshPart.albedoTexture);
+            }
+
+            // draw
+            // if (mesh.bUseDrawArrays)
+            // {
+            //     gl.drawArrays(gl.TRIANGLES, 0, mesh.indicesNum);
+            // }
+            // else
+            {
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+                gl.drawElements(gl.TRIANGLES, meshPart.indices.length, gl.UNSIGNED_SHORT, 0);
+            }
         }
     }
 }

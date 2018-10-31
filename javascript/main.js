@@ -83,8 +83,8 @@ function init()
     shaderProgramObjectPhong = new ShaderProgramObject(gl, "glsl/vertex.glsl", "glsl/fragment.glsl",
     {
         "AVertexPosition" : "vec3",
-        "AVertexNormal" : "vec3",
-        "ATextureCoord" : "vec2"
+        "AVertexTexCoord" : "vec2",
+        "AVertexNormal" : "vec3"
     },
     {
         // Vertex Uniforms
@@ -99,6 +99,7 @@ function init()
         "UDiffuseProduct" : "vec4",
         "USpecularProduct" : "vec4",
         "USamplerCube" : "samplerCube",
+        "USamplerAlbedo" : "sampler2D",
         "UMatViewInv" : "mat4",
         "UMatCameraRot" : "mat4"
     });
@@ -114,7 +115,7 @@ function init()
         "USamplerCube" : "samplerCube"
     });
 
-    // Initialize the buffers.
+    // Initialize the renderable objects.
     RenderObjectCube = new RenderObject(gl, Mesh.createCube(),
     [
         shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation,
@@ -130,11 +131,19 @@ function init()
         shaderProgramObjectSkybox.attributes["AVertexPosition"].glLocation
     ]);
 
-    // var mesh = Mesh.createMesh(FileUtil.GetFile("assets/SkyrimIronClaymore/SkyrimIronClaymore.obj"));
-    var mesh = Mesh.createMesh(FileUtil.GetFile("assets/RZ-0/RZ-0.obj"));
+    var mesh = Mesh.createMesh(gl,
+            FileUtil.GetFile("assets/SkyrimIronClaymore/SkyrimIronClaymore.obj"),
+            "assets/SkyrimIronClaymore/SkyrimIronClaymore.fbm/IronClaymore.jpg");
+    // var mesh = Mesh.createMesh(gl,
+    //         FileUtil.GetFile("assets/SayoendMedievalHouse/SayoendMedievalHouse.obj"),
+    //         "assets/SayoendMedievalHouse/Texture/SayoendMedievalHouse.jpg");
+    // var mesh = Mesh.createMesh(FileUtil.GetFile("assets/RZ-0/RZ-0.obj"));
+    mesh.materialUse[0] = false;
+    mesh.materialUse[1] = false;
     RenderObjectMesh = new RenderObject(gl, mesh,
     [
         shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation,
+        shaderProgramObjectPhong.attributes["AVertexTexCoord"].glLocation,
         shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation
     ]);
 
@@ -252,6 +261,7 @@ function render()
         // Activate the shader.
         gl.useProgram(shaderProgramObjectPhong.glShaderProgram);
         gl.enableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation);
+        gl.enableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexTexCoord"].glLocation);
         gl.enableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation);
 
         // Update general uniforms.
@@ -262,56 +272,12 @@ function render()
         shaderProgramObjectPhong.uniforms["ULightPosition"].value = new Float32Array(NewLightPosition);
         shaderProgramObjectPhong.uniforms["UMatCameraRot"].value = new Float32Array(GLMathLib.flatten(MatCameraRot));
 
-        // Draw cube.
-
-        // // Apply transformations.
-        // var MatCube = GLMathLib.mat4(1.0);
-        // MatCube = GLMathLib.scale(MatCube, GLMathLib.vec3(1.3, 1.3, 1.3));
-        // MatCube = GLMathLib.rotate(MatCube, angle/3, GLMathLib.vec3(1, 0, 0));
-        // MatCube = GLMathLib.rotate(MatCube, angle/3, GLMathLib.vec3(0, 1, 0));
-        // MatCube = GLMathLib.translate(MatCube, GLMathLib.vec3(3, 0, 0));
-
-        // // Camera Rotation Matrix
-        // MatCube = GLMathLib.mult(MatCameraRotInv, MatCube);
-        // MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatCube));
-        // shaderProgramObjectPhong.uniforms["UMatModel"].value = new Float32Array(GLMathLib.flatten(MatCube));
-        // MatCube = GLMathLib.mult(MatView, MatCube);
-        // MatCube = GLMathLib.mult(MatProj, MatCube);
-        // shaderProgramObjectPhong.uniforms["UMatMVP"].value = new Float32Array(GLMathLib.flatten(MatCube));
-        // shaderProgramObjectPhong.uniforms["UMatNormal"].value = new Float32Array(GLMathLib.flatten(MatNormal));
-
-        // shaderProgramObjectPhong.setUniforms();
-
-        // // Render.
-        // RenderObjectCube.render();
-
-        // Draw Sphere
-
-        // Apply transformations.
-        // var MatSphere = GLMathLib.mat4(1.0);
-        // MatSphere = GLMathLib.scale(MatSphere, GLMathLib.vec3(0.075, 0.075, 0.075));
-        // MatSphere = GLMathLib.translate(MatSphere, GLMathLib.vec3(0, -3, 0));
-
-        // // Camera Rotation Matrix
-        // MatSphere = GLMathLib.mult(MatCameraRotInv, MatSphere);
-        // MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatSphere));
-        // shaderProgramObjectPhong.uniforms["UMatModel"].value = new Float32Array(GLMathLib.flatten(MatSphere));
-        // MatSphere = GLMathLib.mult(MatView, MatSphere);
-        // MatSphere = GLMathLib.mult(MatProj, MatSphere);
-        // shaderProgramObjectPhong.uniforms["UMatMVP"].value = new Float32Array(GLMathLib.flatten(MatSphere));
-        // shaderProgramObjectPhong.uniforms["UMatNormal"].value = new Float32Array(GLMathLib.flatten(MatNormal));
-
-        // shaderProgramObjectPhong.setUniforms();
-
-        // // Render.
-        // RenderObjectMesh.render();
-
         // Draw Mesh
 
         // Apply transformations.
         var MatMesh = GLMathLib.mat4(1.0);
-        // MatMesh = GLMathLib.scale(MatMesh, GLMathLib.vec3(0.1, 0.1, 0.1));
-        MatMesh = GLMathLib.scale(MatMesh, GLMathLib.vec3(0.04, 0.04, 0.04));
+        MatMesh = GLMathLib.scale(MatMesh, GLMathLib.vec3(0.1, 0.1, 0.1));
+        // MatMesh = GLMathLib.scale(MatMesh, GLMathLib.vec3(0.04, 0.04, 0.04));
         MatMesh = GLMathLib.translate(MatMesh, GLMathLib.vec3(0, -5, 0));
 
         // Camera Rotation Matrix
@@ -330,6 +296,7 @@ function render()
 
         // Disable shader attributes.
         gl.disableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation);
+        gl.disableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexTexCoord"].glLocation);
         gl.disableVertexAttribArray(shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation);
     }
 
@@ -417,7 +384,6 @@ function initSkybox(string)
             return function()
             {
                 gl.activeTexture(gl.TEXTURE0);
-                gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false);
                 gl.bindTexture(gl.TEXTURE_CUBE_MAP, texture)
                 gl.texImage2D(face, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
                 skyboxImageLoadCount++;

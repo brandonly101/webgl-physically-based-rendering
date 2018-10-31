@@ -21,6 +21,14 @@ class FileUtil
         return result;
     }
 
+    static LoadImage(src, onload)
+    {
+        var image = new Image();
+        image.onload = onload;
+        image.src = src;
+        return image;
+    }
+
     static GetFileShader(filename)
     {
         var result = "";

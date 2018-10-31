@@ -4,8 +4,8 @@
 //
 
 attribute vec3 AVertexPosition;
+attribute vec2 AVertexTexCoord;
 attribute vec3 AVertexNormal;
-// attribute vec2 ATextureCoord;
 
 uniform vec4 UCamPosition;
 uniform vec4 UCamPosSky;
@@ -16,6 +16,7 @@ uniform mat4 UMatNormal;
 
 varying vec3 L, N, E, I;
 varying vec3 VTextureCoordSkybox;
+varying vec2 VVertexTexCoord;
 
 void main(void)
 {
@@ -30,6 +31,8 @@ void main(void)
 
     // Calculate environment mapping variables.
     I = normalize(PosTransform - UCamPosSky.xyz);
+
+    VVertexTexCoord = AVertexTexCoord;
 
     gl_Position = UMatMVP * vec4(AVertexPosition, 1.0);
 }
