@@ -11,34 +11,24 @@ class Mesh
     {
         this.meshParts = null;
 
-        this.materialUse = null;
-
-        this.albedoTexture = null;
-        this.normalTexture = null;
-
         this.bUseDrawArrays = false;
-        this.bUseAlbedoTexture = false;
-        this.bLoadedAlbedoTexture = false;
-        this.bUseNormalTexture = false;
-        this.bLoadedNormalTexture = false;
     }
 
     // Create a mesh from a source file.
-    static createMesh(gl, src, srcAlbedo = null, srcNormal = null)
+    static createMesh(gl, srcMesh, materials)
     {
         var result = new Mesh();
 
         result.meshParts = [];
 
         let materialFaceIndices = [];
-        result.materialUse = [];
 
         let vertices = [];
         let texcoords = [];
         let normals = [];
         let faces = [];
 
-        var arrObjLines = src.split("\n");
+        var arrObjLines = FileUtil.GetFile(srcMesh).split("\n");
         var faceToRender = 0;
         arrObjLines.forEach((elem) =>
         {
@@ -46,12 +36,7 @@ class Mesh
             switch (arrElem[0])
             {
             case "g":
-                // if (arrElem[1].match("IronClaymore:0"))
-                // {
-                //     faceToRender = faces.length;
-                // }
                 materialFaceIndices.push(faces.length);
-                result.materialUse.push(true);
                 break;
             case "v":
                 vertices.push(
@@ -108,7 +93,6 @@ class Mesh
         // Not performant, but maybe some day when I figure out how to properly
         // use an indices array with a format that is not 16-bit.
         result.indicesNum = faces.length;
-        // result.bUseDrawArrays = true;
 
         result.meshParts = [];
         let meshPart;
@@ -119,6 +103,7 @@ class Mesh
             {
                 result.meshParts.push({});
                 meshPart = result.meshParts[result.meshParts.length - 1];
+                meshPart.material = materials[result.meshParts.length - 1];
 
                 meshPart.vertices = [];
                 meshPart.texcoords = [];
@@ -134,26 +119,23 @@ class Mesh
             meshPart.vertices.push(vertices[face.vertexIndex].y);
             meshPart.vertices.push(vertices[face.vertexIndex].z);
 
-            if (srcAlbedo != null)
+            if (texcoords.length !== 0)
             {
                 meshPart.texcoords.push(texcoords[face.texcoordIndex].u);
                 meshPart.texcoords.push(texcoords[face.texcoordIndex].v);
             }
 
-            if (srcNormal == null)
+            if (normals.length !== 0)
             {
-                if (normals.length != 0)
-                {
-                    meshPart.normals.push(normals[face.normalIndex].x);
-                    meshPart.normals.push(normals[face.normalIndex].y);
-                    meshPart.normals.push(normals[face.normalIndex].z);
-                }
-                else
-                {
-                    meshPart.normals.push(0);
-                    meshPart.normals.push(0);
-                    meshPart.normals.push(0);
-                }
+                meshPart.normals.push(normals[face.normalIndex].x);
+                meshPart.normals.push(normals[face.normalIndex].y);
+                meshPart.normals.push(normals[face.normalIndex].z);
+            }
+            else
+            {
+                meshPart.normals.push(0);
+                meshPart.normals.push(0);
+                meshPart.normals.push(0);
             }
 
             if (!result.bUseDrawArrays)
@@ -161,46 +143,6 @@ class Mesh
                 meshPart.indices.push(i - meshPartLastIndex);
             }
         }
-
-        const albedoTexture = gl.createTexture();
-        gl.bindTexture(gl.TEXTURE_2D, albedoTexture);
-
-        // Because images have to be download over the internet
-        // they might take a moment until they are ready.
-        // Until then put a single pixel in the texture so we can
-        // use it immediately. When the image has finished downloading
-        // we'll update the texture with the contents of the image.
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([253, 40, 252, 255]));
-
-        let albedoImage = FileUtil.LoadImage(srcAlbedo != null ? srcAlbedo : "", () =>
-        {
-            function isPowerOf2(value)
-            {
-                return (value & (value - 1)) == 0;
-            }
-
-            gl.bindTexture(gl.TEXTURE_2D, albedoTexture);
-            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, albedoImage);
-
-            // WebGL1 has different requirements for power of 2 images
-            // vs non power of 2 images so check if the image is a
-            // power of 2 in both dimensions.
-            if (isPowerOf2(albedoImage.width) && isPowerOf2(albedoImage.height))
-            {
-                // Yes, it's a power of 2. Generate mips.
-                gl.generateMipmap(gl.TEXTURE_2D);
-            }
-            else
-            {
-                // No, it's not a power of 2. Turn off mips and set
-                // wrapping to clamp to edge
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            }
-        });
-
-        result.albedoTexture = albedoTexture;
 
         return result;
     };
@@ -366,7 +308,7 @@ class Mesh
     }
 
     // Create a cube map mesh.
-    static createCubeMap(length)
+    static createCubeMap(length, material)
     {
         var result = new Mesh();
         result.meshParts = [{}];
@@ -419,6 +361,7 @@ class Mesh
             16, 17, 18,     16, 18, 19,   // right
             20, 21, 22,     20, 22, 23    // left
         ];
+        result.meshParts[0].material = material;
 
         return result;
     };
@@ -443,13 +386,11 @@ class Mesh
 class RenderObject
 {
     constructor(gl,
-                mesh,
-                glAttribLocations)
+                mesh)
     {
         this.gl = gl;
         this.mesh = mesh;
         this.bufferParts = [];
-        this.glAttribLocations = glAttribLocations;
 
         for (let i = 0; i < mesh.meshParts.length; i++)
         {
@@ -487,6 +428,26 @@ class RenderObject
         }
     }
 
+    setUniformValue(name, value)
+    {
+        const mesh = this.mesh;
+
+        for (let i = 0; i < mesh.meshParts.length; i++)
+        {
+            const material = mesh.meshParts[i].material;
+
+            if (material !== null)
+            {
+                const uniforms = material.shaderProgramObject.uniforms;
+
+                if (name in uniforms)
+                {
+                    uniforms[name].value = value;
+                }
+            }
+        }
+    }
+
     render()
     {
         const gl = this.gl;
@@ -495,41 +456,43 @@ class RenderObject
 
         for (let i = 0; i < mesh.meshParts.length; i++)
         {
-            if (mesh.materialUse !== null && mesh.materialUse[i] === false)
+            const meshPart = mesh.meshParts[i];
+
+            // Early break if mesh part has no associated material.
+            if (meshPart.material == null)
             {
                 continue;
             }
 
-            const meshPart = mesh.meshParts[i];
             const buffers = bufferParts[i];
+            const attributes = meshPart.material.shaderProgramObject.attributes;
+            const uniforms = meshPart.material.shaderProgramObject.uniforms;
 
-            // If not ready to render, break out.
-            if (mesh.bUseAlbedoTexture && !mesh.bLoadedAlbedoTexture ||
-                mesh.bUseNormalTexture && !mesh.bLoadedNormalTexture)
-            {
-                return;
-            }
+            // Activate the WebGL shader program object.
+            gl.useProgram(meshPart.material.shaderProgramObject.glShaderProgram);
+
+            meshPart.material.shaderProgramObject.setUniforms();
 
             // Rebind buffers.
+            gl.enableVertexAttribArray(attributes["AVertexPosition"].glLocation);
+
             gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
-            gl.vertexAttribPointer(this.glAttribLocations[0], 3, gl.FLOAT, false, 0, 0);
+            gl.vertexAttribPointer(attributes["AVertexPosition"].glLocation, 3, gl.FLOAT, false, 0, 0);
 
             if (meshPart.texcoords != null && meshPart.texcoords.length != 0)
             {
+                gl.enableVertexAttribArray(attributes["AVertexTexCoord"].glLocation);
+
                 gl.bindBuffer(gl.ARRAY_BUFFER, buffers.texcoords);
-                gl.vertexAttribPointer(this.glAttribLocations[1], 2, gl.FLOAT, false, 0, 0);
+                gl.vertexAttribPointer(attributes["AVertexTexCoord"].glLocation, 2, gl.FLOAT, false, 0, 0);
             }
 
             if (meshPart.normals != null && meshPart.normals.length != 0)
             {
-                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
-                gl.vertexAttribPointer(this.glAttribLocations[2], 3, gl.FLOAT, false, 0, 0);
-            }
+                gl.enableVertexAttribArray(attributes["AVertexNormal"].glLocation);
 
-            if (meshPart.albedoTexture != null)
-            {
-                gl.activeTexture(gl.TEXTURE1);
-                gl.bindTexture(gl.TEXTURE_2D, meshPart.albedoTexture);
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
+                gl.vertexAttribPointer(attributes["AVertexNormal"].glLocation, 3, gl.FLOAT, false, 0, 0);
             }
 
             // draw
@@ -538,9 +501,21 @@ class RenderObject
             //     gl.drawArrays(gl.TRIANGLES, 0, mesh.indicesNum);
             // }
             // else
+            // {
+            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+            gl.drawElements(gl.TRIANGLES, meshPart.indices.length, gl.UNSIGNED_SHORT, 0);
+            // }
+
+            gl.disableVertexAttribArray(attributes["AVertexPosition"].glLocation);
+
+            if (meshPart.texcoords != null && meshPart.texcoords.length != 0)
             {
-                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-                gl.drawElements(gl.TRIANGLES, meshPart.indices.length, gl.UNSIGNED_SHORT, 0);
+                gl.disableVertexAttribArray(attributes["AVertexTexCoord"].glLocation);
+            }
+
+            if (meshPart.normals != null && meshPart.normals.length != 0)
+            {
+                gl.disableVertexAttribArray(attributes["AVertexNormal"].glLocation);
             }
         }
     }

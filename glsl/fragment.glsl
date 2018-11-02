@@ -9,7 +9,6 @@ uniform vec4 UDiffuseProduct;
 uniform vec4 USpecularProduct;
 uniform samplerCube USamplerCube;
 uniform sampler2D USamplerAlbedo;
-uniform mat4 UMatViewInv;
 uniform mat4 UMatCameraRot;
 
 varying vec3 L, N, E, I;
