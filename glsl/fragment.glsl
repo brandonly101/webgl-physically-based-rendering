@@ -7,9 +7,14 @@ precision highp float;
 uniform vec4 UAmbientProduct;
 uniform vec4 UDiffuseProduct;
 uniform vec4 USpecularProduct;
-uniform samplerCube USamplerCube;
-uniform sampler2D USamplerAlbedo;
+
 uniform mat4 UMatCameraRot;
+uniform mat4 UMatNormal;
+
+uniform samplerCube USamplerCube;
+
+uniform sampler2D UTextureAlbedo;
+uniform sampler2D UTextureNormal;
 
 varying vec3 L, N, E, I;
 varying vec3 VTextureCoordSkybox;
@@ -29,7 +34,8 @@ void main(void)
 
     // // Specular light.
     // ColorSpecular = vec4(0.0, 0.0, 0.0, 0.0);
-    // if (dot(E, N) > 0.0) {
+    // if (dot(E, N) > 0.0)
+    // {
     //     // vec3 H = normalize(L + E);
     //     // ColorSpecular = max(pow(max(dot(H, N), 0.0), 20.0) * USpecularProduct, 0.0);
     //     vec3 R = normalize(reflect(-L, N));
@@ -40,14 +46,14 @@ void main(void)
     // VColor = (ColorAmbient + ColorDiffuse + ColorSpecular);
     // VColor.a = 1.0;
 
-    // Add environment mapping.
+    // // Add environment mapping.
     // vec3 LightReflected = reflect(I, N);
     // LightReflected = normalize(vec3(UMatCameraRot * vec4(LightReflected, 0.0)));
     // VColor = textureCube(USamplerCube, LightReflected);
     // VColor.a = 1.0;
 
-    VColor = texture2D(USamplerAlbedo, VVertexTexCoord);
-    // VColor.a = 1.0;
+    VColor = texture2D(UTextureAlbedo, VVertexTexCoord);
+    // VColor = texture2D(UTextureNormal, VVertexTexCoord);
 
     gl_FragColor = VColor;
 }

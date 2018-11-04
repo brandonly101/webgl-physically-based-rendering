@@ -18,6 +18,9 @@ var canvas = document.getElementById("webgl-canvas");
 // Create our WebGL variable, where we will use our WebGL API functions.
 var gl;
 
+// Get the context into a local gl and and a public gl.
+// Use preserveDrawingBuffer:true to keep the drawing buffer after
+// presentation. Fail if context is not found.
 try
 {
     gl = WebGLUtils.setupWebGL(canvas);
@@ -38,18 +41,7 @@ var RenderObjectSkybox;
 // Lighting and shading properties.
 var LightPosition = GLMathLib.vec4(0.0, 20.0, 5.0, 0.0);
 
-var LightAmbient = GLMathLib.vec4(0.065, 0.065, 0.065, 1.0);
-var LightDiffuse = GLMathLib.vec4(1.0, 1.0, 1.0, 1.0);
-var LightSpecular = GLMathLib.vec4(1.0, 1.0, 1.0, 1.0);
-
-var MaterialAmbient = GLMathLib.vec4(1.0, 1.0, 1.0, 1.0);
-var MaterialDiffuse = GLMathLib.vec4(0.75, 0.1, 0.0, 1.0);
-var MaterialSpecular = GLMathLib.vec4(1.0, 1.0, 1.0, 1.0);
-
-var AmbientProduct, DiffuseProduct, SpecularProduct;
-
-var MatModel, MatView, MatProj, MatModelView, MatMVP;
-var MatNormal;
+var MatModel, MatView, MatProj, MatModelView, MatMVP, MatNormal;
 
 var angle = 0;
 
@@ -63,10 +55,6 @@ function init()
     // Initialize the canvas.
     setCanvas();
 
-    // Get the context into a local gl and and a public gl.
-    // Use preserveDrawingBuffer:true to keep the drawing buffer after
-    // presentation. Fail if context is not found.
-
     // Continue if WebGL works on the browser.
     gl.clearColor(0.0, 0.0, 0.0, 1.0);                      // Set the canvas background to pure black.
     gl.enable(gl.DEPTH_TEST);                               // Enable depth testing.
@@ -75,18 +63,8 @@ function init()
     gl.viewport(0, 0, canvas.width, canvas.height);         // Make the viewport adhere to the canvas size.
 
     // Initialize the renderable objects.
-    // RenderObjectCube = new RenderObject(gl, Mesh.createCube(),
-    // [
-    //     shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation,
-    //     shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation
-    // ]);
-    // RenderObjectSphere = new RenderObject(gl, Mesh.createSphere(4),
-    // [
-    //     shaderProgramObjectPhong.attributes["AVertexPosition"].glLocation,
-    //     shaderProgramObjectPhong.attributes["AVertexNormal"].glLocation
-    // ]);
     var materialSkybox = new MaterialSkybox(gl);
-    materialSkybox.setSkyboxTexture("Yokohama");
+    materialSkybox.setSkyboxTexture("Yokohama3");
 
     MeshSkybox = Mesh.createCubeMap(500.0, materialSkybox);
 
@@ -94,6 +72,7 @@ function init()
 
     var meshMaterial = new MaterialPBR(gl);
     meshMaterial.setAlbedoTexture("assets/SkyrimIronClaymore/SkyrimIronClaymore.fbm/IronClaymore.jpg");
+    meshMaterial.setNormalTexture("assets/SkyrimIronClaymore/SkyrimIronClaymore.fbm/IronClaymore_n.jpg");
     var mesh = Mesh.createMesh(
         gl,
         "assets/SkyrimIronClaymore/SkyrimIronClaymore.obj",
@@ -120,7 +99,7 @@ function init()
     ////////////////////////////////////////////////////////////////////////////////
 
     Control.init();
-    Control.setMouseSensitivity(7.0);
+    Control.setMouseSensitivity(5.0);
 
     // Add an event listener to the input box.
     document.getElementById("obj-upload").addEventListener("change", function(e)
@@ -193,12 +172,12 @@ function render()
     RenderObjectMesh.setUniformValue("UMatViewInv", GLMathLib.flatten(GLMathLib.inverse(MatView)));
     var NewLightPosition = GLMathLib.mult(MatCameraRotInv, LightPosition);
     RenderObjectMesh.setUniformValue("ULightPosition", NewLightPosition);
-    RenderObjectMesh.setUniformValue("UMatCameraRot", GLMathLib.flatten(MatCameraRot));
+    RenderObjectMesh.setUniformValue("UMatCameraRot", GLMathLib.flatten(MatCameraRotInv));
 
     // Apply transformations.
     var MatMesh = GLMathLib.mat4(1.0);
-    MatMesh = GLMathLib.scale(MatMesh, GLMathLib.vec3(0.1, 0.1, 0.1));
-    MatMesh = GLMathLib.translate(MatMesh, GLMathLib.vec3(0, -5, 0));
+    // MatMesh = GLMathLib.scale(MatMesh, GLMathLib.vec3(0.1, 0.1, 0.1));
+    // MatMesh = GLMathLib.translate(MatMesh, GLMathLib.vec3(0, -5, 0));
 
     // Camera Rotation Matrix
     MatMesh = GLMathLib.mult(MatCameraRotInv, MatMesh);

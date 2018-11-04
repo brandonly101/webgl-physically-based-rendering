@@ -125,6 +125,8 @@ class MaterialSkybox
             "USamplerCube" : "samplerCube"
         });
 
+        gl.useProgram(this.shaderProgramObject.glShaderProgram);
+
         this.attributes = this.shaderProgramObject.attributes;
         this.uniforms = this.shaderProgramObject.uniforms;
 
@@ -204,29 +206,34 @@ class MaterialPBR
                 "UMatCameraRot" : "mat4",
 
                 // PBR-specific Uniforms
-                "USamplerAlbedo" : "sampler2D",
+                "UTextureAlbedo" : "sampler2D",
+                "UTextureNormal" : "sampler2D",
             }
         );
+
+        gl.useProgram(this.shaderProgramObject.glShaderProgram);
 
         this.attributes = this.shaderProgramObject.attributes;
         this.uniforms = this.shaderProgramObject.uniforms;
 
         this.albedoTexture = gl.createTexture();
+        gl.uniform1i(this.uniforms["UTextureAlbedo"].glLocation, 1);
         gl.bindTexture(gl.TEXTURE_2D, this.albedoTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
 
         this.normalTexture = gl.createTexture();
+        gl.uniform1i(this.uniforms["UTextureNormal"].glLocation, 2);
         gl.bindTexture(gl.TEXTURE_2D, this.normalTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
     }
 
-    setTextureImage(srcImage, texture)
+    setTextureImage(srcImage, texture, unitToActivate)
     {
         const gl = this.gl;
 
         let image = FileUtil.LoadImage(srcImage, () =>
         {
-            gl.activeTexture(gl.TEXTURE0);
+            gl.activeTexture(gl.TEXTURE0 + unitToActivate);
             gl.bindTexture(gl.TEXTURE_2D, texture);
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
 
@@ -248,6 +255,8 @@ class MaterialPBR
         });
     }
 
-    setAlbedoTexture(srcImage) { this.setTextureImage(srcImage, this.albedoTexture); }
-    setNormalTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture); }
+    setAlbedoTexture(srcImage) { this.setTextureImage(srcImage, this.albedoTexture, 1); }
+    setNormalTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 2); }
+    setMetalnessTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 3); }
+    setRoughnessTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 4); }
 }
