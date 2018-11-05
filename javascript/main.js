@@ -30,20 +30,14 @@ catch (e)
     console.log("Getting context failed!");
 }
 
-// Create a cube and sphere mesh object
-var MeshSkybox;
-
-var RenderObjectCube;
-var RenderObjectSphere;
+// Render object references
 var RenderObjectMesh;
 var RenderObjectSkybox;
 
 // Lighting and shading properties.
 var LightPosition = GLMathLib.vec4(0.0, 20.0, 5.0, 0.0);
 
-var MatModel, MatView, MatProj, MatModelView, MatMVP, MatNormal;
-
-var angle = 0;
+var MatModel, MatView, MatProj, MatMV, MatMVP, MatNormal;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Main init and render loops.
@@ -63,10 +57,10 @@ function init()
     gl.viewport(0, 0, canvas.width, canvas.height);         // Make the viewport adhere to the canvas size.
 
     // Initialize the renderable objects.
+
     var materialSkybox = new MaterialSkybox(gl);
     materialSkybox.setSkyboxTexture("Yokohama3");
-
-    MeshSkybox = Mesh.createCubeMap(500.0, materialSkybox);
+    var MeshSkybox = Mesh.createCubeMap(500.0, materialSkybox);
 
     RenderObjectSkybox = new RenderObject(gl, MeshSkybox);
 
@@ -93,8 +87,8 @@ function init()
     MatModel = GLMathLib.mat4(1.0);
     MatView = GLMathLib.lookAt(Camera.at, Camera.eye, Camera.up);
     MatProj = GLMathLib.perspective(Settings.yFOV, Settings.aspectRatio, Settings.nearClipPlane, Settings.farClipPlane);
-    MatModelView = GLMathLib.mult(MatView, MatModel);
-    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatModelView));
+    MatMV = GLMathLib.mult(MatView, MatModel);
+    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatMV));
 
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -124,37 +118,35 @@ function init()
 // Render loop.
 function render()
 {
-    ////////////////////////////
+    window.requestAnimFrame(render, canvas);
+
+
+    ////////////////////////////////////////////////////////////////////////////////
     // Perform general setup.
 
     // Create the camera transformation matrices.
-    var MatCameraRot = GLMathLib.mat4(1.0);
-    MatCameraRot = GLMathLib.translate(MatCameraRot, GLMathLib.vec3(0, 0, Control.var.mouseScroll));
-    MatCameraRot = GLMathLib.rotate(MatCameraRot, -Control.var.angleY/Control.var.mouseSensitivity, GLMathLib.vec3(1, 0, 0));
-    MatCameraRot = GLMathLib.rotate(MatCameraRot, -Control.var.angleX/Control.var.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
+    MatView = GLMathLib.mat4(1.0);
+    MatView = GLMathLib.rotate(MatView, Control.var.angleX/Control.var.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
+    MatView = GLMathLib.rotate(MatView, Control.var.angleY/Control.var.mouseSensitivity, GLMathLib.vec3(1, 0, 0));
+    MatView = GLMathLib.translate(MatView, GLMathLib.vec3(0, 0, Control.var.mouseScroll/Control.var.mouseSensitivity - 10));
 
     // Create a transformation matrix for only the skybox.
-    var MatCameraRotSkybox = GLMathLib.mat4(1.0);
-    MatCameraRotSkybox = GLMathLib.rotate(MatCameraRotSkybox, -Control.var.angleY/Control.var.mouseSensitivity, GLMathLib.vec3(1, 0, 0));
-    MatCameraRotSkybox = GLMathLib.rotate(MatCameraRotSkybox, -Control.var.angleX/Control.var.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
+    var MatViewSkybox = GLMathLib.mat4(1.0);
+    MatViewSkybox = GLMathLib.rotate(MatViewSkybox, Control.var.angleX/Control.var.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
+    MatViewSkybox = GLMathLib.rotate(MatViewSkybox, Control.var.angleY/Control.var.mouseSensitivity, GLMathLib.vec3(1, 0, 0));
 
-    // Calculate the inverse transformation matrices for the camera and skybox transformation matrices.
-    var MatCameraRotInv = GLMathLib.inverse(MatCameraRot);
-    var MatCameraRotSkyboxInv = GLMathLib.inverse(MatCameraRotSkybox);
 
-    ////////////////////////////
+
+    ////////////////////////////////////////////////////////////////////////////////
     // Draw skybox.
+
     gl.disable(gl.DEPTH_TEST);
     gl.depthMask(false);
 
     // Apply transformations.
     var MatSkybox = GLMathLib.mat4(1.0);
-    MatSkybox = GLMathLib.mult(MatCameraRotSkyboxInv, MatSkybox);
-    MatSkybox = GLMathLib.mult(MatModel, MatSkybox);
-    MatSkybox = GLMathLib.mult(MatView, MatSkybox);
+    MatSkybox = GLMathLib.mult(MatViewSkybox, MatSkybox);
     MatSkybox = GLMathLib.mult(MatProj, MatSkybox);
-
-    // Update specific uniforms.
     RenderObjectSkybox.setUniformValue("UMatMVP", GLMathLib.flatten(MatSkybox));
 
     // Render.
@@ -163,39 +155,38 @@ function render()
     gl.depthMask(true);
     gl.enable(gl.DEPTH_TEST);
 
-    ////////////////////////////
+
+
+    ////////////////////////////////////////////////////////////////////////////////
     // Draw general meshes.
 
-    // Update general uniforms.
-    var NewCameraPosition = GLMathLib.mult(MatCameraRotInv, GLMathLib.vec4(Camera.eye, 1.0));
+    // Pass in the camera position in world space.
+    var NewCameraPosition = GLMathLib.mult(GLMathLib.inverse(MatView), GLMathLib.vec4(Camera.eye, 1.0));
     RenderObjectMesh.setUniformValue("UCamPosition", NewCameraPosition);
-    RenderObjectMesh.setUniformValue("UMatViewInv", GLMathLib.flatten(GLMathLib.inverse(MatView)));
-    var NewLightPosition = GLMathLib.mult(MatCameraRotInv, LightPosition);
-    RenderObjectMesh.setUniformValue("ULightPosition", NewLightPosition);
-    RenderObjectMesh.setUniformValue("UMatCameraRot", GLMathLib.flatten(MatCameraRotInv));
+
+    // Set the light position.
+    RenderObjectMesh.setUniformValue("ULightPosition", GLMathLib.flatten(LightPosition));
 
     // Apply transformations.
     var MatMesh = GLMathLib.mat4(1.0);
-    // MatMesh = GLMathLib.scale(MatMesh, GLMathLib.vec3(0.1, 0.1, 0.1));
-    // MatMesh = GLMathLib.translate(MatMesh, GLMathLib.vec3(0, -5, 0));
-
-    // Camera Rotation Matrix
-    MatMesh = GLMathLib.mult(MatCameraRotInv, MatMesh);
-    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatMesh));
     RenderObjectMesh.setUniformValue("UMatModel", GLMathLib.flatten(MatMesh));
     MatMesh = GLMathLib.mult(MatView, MatMesh);
+    RenderObjectMesh.setUniformValue("UMatView", GLMathLib.flatten(MatMesh));
+    RenderObjectMesh.setUniformValue("UMatMV", GLMathLib.flatten(MatMesh));
+    MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatMesh));
+    RenderObjectMesh.setUniformValue("UMatNormal", GLMathLib.flatten(MatNormal));
+    RenderObjectMesh.setUniformValue("UMatProj", GLMathLib.flatten(MatProj));
+
     MatMesh = GLMathLib.mult(MatProj, MatMesh);
     RenderObjectMesh.setUniformValue("UMatMVP", GLMathLib.flatten(MatMesh));
-    RenderObjectMesh.setUniformValue("UMatNormal", GLMathLib.flatten(MatNormal));
 
     // Render.
     RenderObjectMesh.render();
 
-    // Angle
-    angle += 1.0;
+    // TODO: Implement propper normal mapping involving tangent space transformation and TBN.
 
-    // Call render again because we are looping it.
-    window.requestAnimFrame(render, canvas);
+
+
 }
 
 window.onresize = () =>

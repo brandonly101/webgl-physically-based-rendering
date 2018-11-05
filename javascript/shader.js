@@ -194,6 +194,9 @@ class MaterialPBR
                 "UCamPosSky" : "vec4",
                 "ULightPosition" : "vec4",
                 "UMatModel" : "mat4",
+                "UMatView" : "mat4",
+                "UMatMV" : "mat4",
+                "UMatProj" : "mat4",
                 "UMatMVP" : "mat4",
                 "UMatNormal" : "mat4",
 
@@ -217,11 +220,13 @@ class MaterialPBR
         this.uniforms = this.shaderProgramObject.uniforms;
 
         this.albedoTexture = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + 1);
         gl.uniform1i(this.uniforms["UTextureAlbedo"].glLocation, 1);
         gl.bindTexture(gl.TEXTURE_2D, this.albedoTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
 
         this.normalTexture = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + 2);
         gl.uniform1i(this.uniforms["UTextureNormal"].glLocation, 2);
         gl.bindTexture(gl.TEXTURE_2D, this.normalTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
