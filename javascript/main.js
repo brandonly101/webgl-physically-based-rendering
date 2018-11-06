@@ -35,7 +35,7 @@ var RenderObjectMesh;
 var RenderObjectSkybox;
 
 // Lighting and shading properties.
-var LightPosition = GLMathLib.vec4(0.0, 20.0, 5.0, 0.0);
+var LightPosition = GLMathLib.vec4(0.0, 10.0, 15.0, 0.0);
 
 var MatModel, MatView, MatProj, MatMV, MatMVP, MatNormal;
 
@@ -161,11 +161,11 @@ function render()
     // Draw general meshes.
 
     // Pass in the camera position in world space.
-    var NewCameraPosition = GLMathLib.mult(GLMathLib.inverse(MatView), GLMathLib.vec4(Camera.eye, 1.0));
+    var NewCameraPosition = GLMathLib.mult(GLMathLib.inverse(MatView), GLMathLib.vec4(0, 0, 0, 1.0));
     RenderObjectMesh.setUniformValue("UCamPosition", NewCameraPosition);
 
     // Set the light position.
-    RenderObjectMesh.setUniformValue("ULightPosition", GLMathLib.flatten(LightPosition));
+    RenderObjectMesh.setUniformValue("ULightPosition", LightPosition);
 
     // Apply transformations.
     var MatMesh = GLMathLib.mat4(1.0);
@@ -182,8 +182,6 @@ function render()
 
     // Render.
     RenderObjectMesh.render();
-
-    // TODO: Implement propper normal mapping involving tangent space transformation and TBN.
 
 
 

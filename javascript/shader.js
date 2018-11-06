@@ -186,7 +186,8 @@ class MaterialPBR
             {
                 "AVertexPosition" : "vec3",
                 "AVertexTexCoord" : "vec2",
-                "AVertexNormal" : "vec3"
+                "AVertexNormal" : "vec3",
+                "AVertexTangent" : "vec3"
             },
             {
                 // Vertex Uniforms

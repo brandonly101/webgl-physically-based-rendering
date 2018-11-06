@@ -19,14 +19,11 @@ class Mesh
     {
         var result = new Mesh();
 
-        result.meshParts = [];
-
-        let materialFaceIndices = [];
-
         let vertices = [];
         let texcoords = [];
         let normals = [];
         let faces = [];
+        let materialFaceIndices = [];
 
         var arrObjLines = FileUtil.GetFile(srcMesh).split("\n");
         var faceToRender = 0;
@@ -109,6 +106,7 @@ class Mesh
                 meshPart.texcoords = [];
                 meshPart.normals = [];
                 meshPart.indices = [];
+                meshPart.tangents = [];
 
                 meshPartLastIndex = i;
             }
@@ -141,6 +139,49 @@ class Mesh
             if (!result.bUseDrawArrays)
             {
                 meshPart.indices.push(i - meshPartLastIndex);
+            }
+
+            // Calculate and add tangents
+            if (i % 3 === 0)
+            {
+                const face1 = faces[i + 0];
+                const face2 = faces[i + 1];
+                const face3 = faces[i + 2];
+                
+                const edge1 =
+                {
+                    x: vertices[face2.vertexIndex].x - vertices[face1.vertexIndex].x,
+                    y: vertices[face2.vertexIndex].y - vertices[face1.vertexIndex].y,
+                    z: vertices[face2.vertexIndex].z - vertices[face1.vertexIndex].z
+                };
+
+                const edge2 =
+                {
+                    x: vertices[face3.vertexIndex].x - vertices[face2.vertexIndex].x,
+                    y: vertices[face3.vertexIndex].y - vertices[face2.vertexIndex].y,
+                    z: vertices[face3.vertexIndex].z - vertices[face2.vertexIndex].z
+                };
+
+                const dU1 = texcoords[face2.texcoordIndex].u - texcoords[face1.texcoordIndex].u;
+                const dU2 = texcoords[face3.texcoordIndex].u - texcoords[face2.texcoordIndex].u;
+                const dV1 = texcoords[face2.texcoordIndex].v - texcoords[face1.texcoordIndex].v;
+                const dV2 = texcoords[face3.texcoordIndex].v - texcoords[face2.texcoordIndex].v;
+
+                const det = 1.0 / (dU1 * dV2 - dU2 * dV1);
+                let tangent = 
+                [
+                    det * (edge1.x * dV2 - edge2.x * dV1),
+                    det * (edge1.y * dV2 - edge2.y * dV1),
+                    det * (edge1.z * dV2 - edge2.z * dV1)
+                ];
+                tangent = GLMathLib.normalize(tangent);
+
+                for (let a = 0; a < 3; a++)
+                {
+                    meshPart.tangents.push(tangent[0]);
+                    meshPart.tangents.push(tangent[1]);
+                    meshPart.tangents.push(tangent[2]);
+                }
             }
         }
 
@@ -395,25 +436,26 @@ class RenderObject
         for (let i = 0; i < mesh.meshParts.length; i++)
         {
             let buffers = {};
+            const meshPart = mesh.meshParts[i];
 
             // Create vertices buffer.
             buffers.vertices = gl.createBuffer();
             gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
-            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.meshParts[i].vertices), gl.STATIC_DRAW);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(meshPart.vertices), gl.STATIC_DRAW);
 
-            if (mesh.meshParts[i].texcoords != null)
+            if (meshPart.texcoords != null)
             {
                 buffers.texcoords = gl.createBuffer();
                 gl.bindBuffer(gl.ARRAY_BUFFER, buffers.texcoords);
-                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.meshParts[i].texcoords), gl.STATIC_DRAW);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(meshPart.texcoords), gl.STATIC_DRAW);
             }
 
             // Create normals buffer, if applicable.
-            if (mesh.meshParts[i].normals != null)
+            if (meshPart.normals != null)
             {
                 buffers.normals = gl.createBuffer();
                 gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
-                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.meshParts[i].normals), gl.STATIC_DRAW);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(meshPart.normals), gl.STATIC_DRAW);
             }
 
             // if (!mesh.meshParts[i].bUseDrawArrays)
@@ -421,7 +463,14 @@ class RenderObject
                 // Create vertex indices buffer.
                 buffers.indices = gl.createBuffer();
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(mesh.meshParts[i].indices), gl.STATIC_DRAW);
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(meshPart.indices), gl.STATIC_DRAW);
+            }
+
+            if (meshPart.tangents != null)
+            {
+                buffers.tangents = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.tangents);
+                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(meshPart.tangents), gl.STATIC_DRAW);
             }
 
             this.bufferParts.push(buffers);
@@ -475,14 +524,12 @@ class RenderObject
 
             // Rebind buffers.
             gl.enableVertexAttribArray(attributes["AVertexPosition"].glLocation);
-
             gl.bindBuffer(gl.ARRAY_BUFFER, buffers.vertices);
             gl.vertexAttribPointer(attributes["AVertexPosition"].glLocation, 3, gl.FLOAT, false, 0, 0);
 
             if (meshPart.texcoords != null && meshPart.texcoords.length != 0)
             {
                 gl.enableVertexAttribArray(attributes["AVertexTexCoord"].glLocation);
-
                 gl.bindBuffer(gl.ARRAY_BUFFER, buffers.texcoords);
                 gl.vertexAttribPointer(attributes["AVertexTexCoord"].glLocation, 2, gl.FLOAT, false, 0, 0);
             }
@@ -490,9 +537,15 @@ class RenderObject
             if (meshPart.normals != null && meshPart.normals.length != 0)
             {
                 gl.enableVertexAttribArray(attributes["AVertexNormal"].glLocation);
-
                 gl.bindBuffer(gl.ARRAY_BUFFER, buffers.normals);
                 gl.vertexAttribPointer(attributes["AVertexNormal"].glLocation, 3, gl.FLOAT, false, 0, 0);
+            }
+
+            if (meshPart.tangents != null && meshPart.tangents.length != 0)
+            {
+                gl.enableVertexAttribArray(attributes["AVertexTangent"].glLocation);
+                gl.bindBuffer(gl.ARRAY_BUFFER, buffers.tangents);
+                gl.vertexAttribPointer(attributes["AVertexTangent"].glLocation, 3, gl.FLOAT, false, 0, 0);
             }
 
             // draw
@@ -516,6 +569,11 @@ class RenderObject
             if (meshPart.normals != null && meshPart.normals.length != 0)
             {
                 gl.disableVertexAttribArray(attributes["AVertexNormal"].glLocation);
+            }
+
+            if (meshPart.tangents != null && meshPart.tangents.length != 0)
+            {
+                gl.disableVertexAttribArray(attributes["AVertexTangent"].glLocation);
             }
         }
     }
