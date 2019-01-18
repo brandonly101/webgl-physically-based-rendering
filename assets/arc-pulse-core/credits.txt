@@ -1,0 +1,11 @@
+ARC Pulse Core
+
+by: toomanydemons
+
+URL: https://sketchfab.com/models/22e55de3be0c46caad827774109572f5
+
+This ARC Pulse Core appears heavily used and needs a bit of work, but with the right amount of love and a few spare parts it will be functional again. The standard ARC Pulse Core can be installed into a class C (or lower) transport ship’s propulsion systems. The Pulse Core is somewhat similar to the power steering of an automobile. It allows for faster split-second deceleration, which provides greatly increased maneuverability. The Core reroutes excess plasma before it hits thrusters and holds it briefly, releasing the discharge inversely as rapid minute pulses.
+
+The invention of this simple bit of tech led to the rising popularity of racing ships and fast-turning war machines. The industrial grade shown here was designed for medium-size frigates and is able to stabilize the momentum of massive payloads.
+
+License: CC Attribution Creative Commons Attribution

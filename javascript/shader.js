@@ -184,8 +184,8 @@ class MaterialPBR
         this.gl = gl;
         this.shaderProgramObject = new ShaderProgramObject(
             gl,
-            "glsl/vertex.glsl",
-            "glsl/fragment.glsl",
+            "glsl/PBRVert.glsl",
+            "glsl/PBRFrag.glsl",
             {
                 "AVertexPosition" : "vec3",
                 "AVertexTexCoord" : "vec2",
