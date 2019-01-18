@@ -100,6 +100,9 @@ class ShaderProgramObject
                 case "vec4":
                     gl.uniform4fv(uniformVar.glLocation, new Float32Array(uniformVar.value));
                     break;
+                case "vec3":
+                    gl.uniform3fv(uniformVar.glLocation, new Float32Array(uniformVar.value));
+                    break;
                 case "mat4":
                     gl.uniformMatrix4fv(uniformVar.glLocation, false, new Float32Array(uniformVar.value));
                     break;
@@ -194,6 +197,7 @@ class MaterialPBR
                 "UCamPosition" : "vec4",
                 "UCamPosSky" : "vec4",
                 "ULightPosition" : "vec4",
+                "ULightDirectDir" : "vec3",
                 "UMatModel" : "mat4",
                 "UMatView" : "mat4",
                 "UMatMV" : "mat4",
@@ -202,9 +206,6 @@ class MaterialPBR
                 "UMatNormal" : "mat4",
 
                 // Fragment Uniforms
-                "UAmbientProduct" : "vec4",
-                "UDiffuseProduct" : "vec4",
-                "USpecularProduct" : "vec4",
                 "USamplerCube" : "samplerCube",
                 "UMatViewInv" : "mat4",
                 "UMatCameraRot" : "mat4",

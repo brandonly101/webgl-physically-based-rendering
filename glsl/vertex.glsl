@@ -13,6 +13,7 @@ attribute vec3 AVertexTangent;
 
 // Uniforms
 uniform vec4 ULightPosition;
+uniform vec3 ULightDirectDir;
 uniform vec4 UCamPosition;
 
 uniform mat4 UMatModel;
@@ -30,7 +31,7 @@ varying vec3 VTextureCoordSkybox;
 varying vec2 VVertexTexCoord;
 
 varying vec3 VTanLightDir;
-varying vec3 VTanCamDir;
+varying vec3 VTanViewDir;
 
 // Utility function for transposing mat3, since WebGL GLSL does not support transpose()
 highp mat3 transpose(in highp mat3 inMatrix)
@@ -51,20 +52,21 @@ highp mat3 transpose(in highp mat3 inMatrix)
 void main(void)
 {
     // Create the inverse TBN matrix (in view space as well)
-    vec3 TViewSpace = normalize(vec3(UMatNormal * vec4(AVertexTangent, 0.0)));
-    vec3 NViewSpace = normalize(vec3(UMatNormal * vec4(AVertexNormal, 0.0)));
-    TViewSpace = normalize(TViewSpace - dot(TViewSpace, NViewSpace) * NViewSpace);
-    vec3 BViewSpace = cross(TViewSpace, NViewSpace);
-    mat3 TBN = mat3(TViewSpace, BViewSpace, NViewSpace);
+    vec3 T = normalize(vec3(UMatModel * vec4(AVertexTangent, 0.0)));
+    vec3 N = normalize(vec3(UMatModel * vec4(AVertexNormal, 0.0)));
+    T = normalize(T - dot(T, N) * N);
+    vec3 B = cross(T, N);
+    mat3 TBN = mat3(T, B, N);
     mat3 invTBN = transpose(TBN);
 
     // Calculate the light dir and cam dir (in tangent space) to pass into the pixel shader.
-    vec3 TanLightPos = invTBN * vec3(UMatView * ULightPosition);
-    vec3 TanCamPos = invTBN * vec3(UMatView * UCamPosition);
-    vec3 TanVertPos = invTBN * vec3(UMatMV * vec4(AVertexPosition, 0.0));
+    vec3 TanLightPos = invTBN * vec3(ULightPosition);
+    vec3 TanViewPos = invTBN * vec3(UCamPosition);
+    vec3 TanVertPos = invTBN * vec3(UMatModel * vec4(AVertexPosition, 0.0));
 
-    VTanLightDir = normalize(TanLightPos - TanVertPos);
-    VTanCamDir = normalize(TanCamPos - TanVertPos);
+    // VTanLightDir = normalize(TanLightPos - TanVertPos);
+    VTanLightDir = normalize(invTBN * ULightDirectDir); // Directional Light
+    VTanViewDir = normalize(TanViewPos - TanVertPos);
 
     // Calculate environment mapping variables.
     vec3 PosWorldSpace = (UMatModel * vec4(AVertexPosition, 1.0)).xyz;

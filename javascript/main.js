@@ -36,6 +36,7 @@ var RenderObjectSkybox;
 
 // Lighting and shading properties.
 var LightPosition = GLMathLib.vec4(0.0, 10.0, 15.0, 0.0);
+var LightDirectDir = GLMathLib.vec3(0.35, 0.75, 1.0);
 
 var MatModel, MatView, MatProj, MatMV, MatMVP, MatNormal;
 
@@ -166,6 +167,7 @@ function render()
 
     // Set the light position.
     RenderObjectMesh.setUniformValue("ULightPosition", LightPosition);
+    RenderObjectMesh.setUniformValue("ULightDirectDir", LightDirectDir);
 
     // Apply transformations.
     var MatMesh = GLMathLib.mat4(1.0);

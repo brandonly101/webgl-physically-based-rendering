@@ -5,6 +5,8 @@
 precision highp float;
 
 // Uniforms
+uniform mat4 UMatModel;
+uniform mat4 UMatView;
 uniform mat4 UMatMV;
 uniform mat4 UMatNormal;
 
@@ -22,13 +24,17 @@ varying vec4 VColor;
 varying vec2 VVertexTexCoord;
 
 varying vec3 VTanLightDir;
-varying vec3 VTanCamDir;
+varying vec3 VTanViewDir;
 
 void main(void)
 {
     // Normal map
     vec3 normalMap = texture2D(UTextureNormal, VVertexTexCoord).rgb;
     vec3 TanNormalDir = normalize(normalMap * 2.0 - 1.0);
+
+    // Add environment mapping.
+    vec3 EnvMapR = reflect(VEnvMapI, VEnvMapN);
+    vec4 ColorEnvMap = textureCube(USamplerCube, EnvMapR);
 
     // Calculate the color/intensities of each respective light.
     vec4 ColorAmbient, ColorDiffuse, ColorSpecular, VColor;
@@ -37,24 +43,24 @@ void main(void)
     ColorAmbient = texture2D(UTextureAlbedo, VVertexTexCoord) * 0.35;
 
     // Diffuse light.
-    ColorDiffuse = max(dot(TanNormalDir, VTanLightDir), 0.0) * texture2D(UTextureAlbedo, VVertexTexCoord) * 2.0;
+    ColorDiffuse = max(dot(TanNormalDir, VTanLightDir), 0.0) * texture2D(UTextureAlbedo, VVertexTexCoord) * 1.0;
 
     // Specular light.
     ColorSpecular = vec4(0.0, 0.0, 0.0, 0.0);
-    if (dot(VTanCamDir, TanNormalDir) > 0.0)
+    if (dot(VTanViewDir, TanNormalDir) > 0.0)
     {
-        vec3 R = normalize(reflect(-VTanLightDir, TanNormalDir));
-        ColorSpecular = max(pow(max(dot(VTanCamDir, R), 0.0), 20.0) * vec4(1.0, 1.0, 1.0, 1.0) * 5.0, 0.0);
+        vec3 Halfway = normalize(VTanLightDir + VTanViewDir);
+        ColorSpecular = pow(max((dot(TanNormalDir, Halfway)), 0.0), 20.0) * vec4(1.0, 1.0, 1.0, 1.0) * 0.650;
+        ColorSpecular = max(ColorSpecular, 0.0);
     }
 
     // Add all the lights up.
-    VColor = (ColorAmbient + ColorDiffuse + ColorSpecular);
+    VColor = (ColorAmbient + ColorDiffuse + ColorSpecular) * 0.9 + ColorEnvMap * 0.1;
+    // VColor = ColorEnvMap;
     VColor.a = 1.0;
 
-    // Add environment mapping.
-    // vec3 EnvMapR = reflect(VEnvMapI, VEnvMapN);
-    // VColor = textureCube(USamplerCube, EnvMapR);
-    // VColor.a = 1.0;
+    // float gamma = 2.2;
+    // VColor.rgb = pow(VColor.rgb, vec3(1.0/gamma));
 
     gl_FragColor = VColor;
 }
