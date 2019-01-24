@@ -65,18 +65,48 @@ function init()
 
     RenderObjectSkybox = new RenderObject(gl, MeshSkybox);
 
-    var meshMaterial = new MaterialPBR(gl);
-    meshMaterial.setAlbedoTexture("assets/SkyrimIronClaymore/SkyrimIronClaymore.fbm/IronClaymore.jpg");
-    meshMaterial.setNormalTexture("assets/SkyrimIronClaymore/SkyrimIronClaymore.fbm/IronClaymore_n.jpg");
+    // Engine thing that has PBR textures
+    var meshMaterialPalletStack = new MaterialPBR(gl);
+    meshMaterialPalletStack.setAlbedoTexture("assets/arc-pulse-core/textures/MAT_PalletStack_01_Base_Color.png");
+    meshMaterialPalletStack.setNormalTexture("assets/arc-pulse-core/textures/MAT_PalletStack_01_Normal_DirectX.png");
+
+    var meshMaterialPulseFilter = new MaterialPBR(gl);
+    meshMaterialPulseFilter.setAlbedoTexture("assets/arc-pulse-core/textures/MAT_PulseFilter_Base_Color.png");
+    meshMaterialPulseFilter.setNormalTexture("assets/arc-pulse-core/textures/MAT_PulseFilter_Normal_DirectX.png");
+
+    var meshMaterialPallets = new MaterialPBR(gl);
+    meshMaterialPallets.setAlbedoTexture("assets/arc-pulse-core/textures/MAT_Scifi_Pallets_Base_Color.png");
+    meshMaterialPallets.setNormalTexture("assets/arc-pulse-core/textures/MAT_Scifi_Pallets_Normal_DirectX.png");
+
+    var meshMaterialArray = [];
+    for (let i = 0; i < 36; i++)
+    {
+        meshMaterialArray.push(meshMaterialPalletStack);
+    }
+    meshMaterialArray[9] = meshMaterialPulseFilter;
+    meshMaterialArray[14] = meshMaterialPallets;
+    meshMaterialArray[29] = meshMaterialPallets;
     var mesh = Mesh.createMesh(
         gl,
-        "assets/SkyrimIronClaymore/SkyrimIronClaymore.obj",
-        [
-            null,
-            null,
-            meshMaterial
-        ]
+        "assets/arc-pulse-core/source/PalletStack01_Paint/PalletStack01_Paint.obj",
+        meshMaterialArray,
+        true
     );
+
+    // Skyrim Claymore
+    // var meshMaterial = new MaterialPBR(gl);
+    // meshMaterial.setAlbedoTexture("assets/SkyrimIronClaymore/SkyrimIronClaymore.fbm/IronClaymore.jpg");
+    // meshMaterial.setNormalTexture("assets/SkyrimIronClaymore/SkyrimIronClaymore.fbm/IronClaymore_n.jpg");
+    // var mesh = Mesh.createMesh(
+    //     gl,
+    //     "assets/SkyrimIronClaymore/SkyrimIronClaymore.obj",
+    //     [
+    //         null,
+    //         null,
+    //         meshMaterial
+    //     ]
+    // );
+
     // var mesh = Mesh.createMesh(gl,
     //         FileUtil.GetFile("assets/SayoendMedievalHouse/SayoendMedievalHouse.obj"),
     //         "assets/SayoendMedievalHouse/Texture/SayoendMedievalHouse.jpg");
@@ -97,23 +127,23 @@ function init()
     Control.setMouseSensitivity(5.0);
 
     // Add an event listener to the input box.
-    document.getElementById("obj-upload").addEventListener("change", function(e)
-    {
-        var file = e.target.files[0];
-        if (!file)
-        {
-            return;
-        }
-        var reader = new FileReader();
-        reader.onload = function(e)
-        {
-            var contents = e.target.result;
-            meshRenderer = Mesh.createMesh(contents);
-            Buffer.mesh = createMeshBuffer(meshRender.vertices, meshRender.normals, meshRender.indices);
-        };
-        reader.readAsText(file);
-        Buffer.mesh = createMeshBuffer(meshRender.vertices, meshRender.normals, meshRender.indices);
-    }, false);
+    // document.getElementById("obj-upload").addEventListener("change", function(e)
+    // {
+    //     var file = e.target.files[0];
+    //     if (!file)
+    //     {
+    //         return;
+    //     }
+    //     var reader = new FileReader();
+    //     reader.onload = function(e)
+    //     {
+    //         var contents = e.target.result;
+    //         meshRenderer = Mesh.createMesh(contents);
+    //         Buffer.mesh = createMeshBuffer(meshRender.vertices, meshRender.normals, meshRender.indices);
+    //     };
+    //     reader.readAsText(file);
+    //     Buffer.mesh = createMeshBuffer(meshRender.vertices, meshRender.normals, meshRender.indices);
+    // }, false);
 }
 
 // Render loop.

@@ -175,6 +175,12 @@ class MaterialSkybox
             image.src = cubeFaces[i][0];
         }
     }
+
+    setActiveTextures()
+    {
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.skyboxTexture);
+    }
 }
 
 class MaterialPBR
@@ -222,13 +228,13 @@ class MaterialPBR
         this.uniforms = this.shaderProgramObject.uniforms;
 
         this.albedoTexture = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + 1);
+        gl.activeTexture(gl.TEXTURE0 + 0);
         gl.uniform1i(this.uniforms["UTextureAlbedo"].glLocation, 1);
         gl.bindTexture(gl.TEXTURE_2D, this.albedoTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
 
         this.normalTexture = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + 2);
+        gl.activeTexture(gl.TEXTURE0 + 1);
         gl.uniform1i(this.uniforms["UTextureNormal"].glLocation, 2);
         gl.bindTexture(gl.TEXTURE_2D, this.normalTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
@@ -262,8 +268,19 @@ class MaterialPBR
         });
     }
 
-    setAlbedoTexture(srcImage) { this.setTextureImage(srcImage, this.albedoTexture, 1); }
-    setNormalTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 2); }
-    setMetalnessTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 3); }
-    setRoughnessTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 4); }
+    setAlbedoTexture(srcImage) { this.setTextureImage(srcImage, this.albedoTexture, 0); }
+    setNormalTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 1); }
+    setMetalnessTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 2); }
+    setRoughnessTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 3); }
+
+    setActiveTextures()
+    {
+        gl.activeTexture(gl.TEXTURE0 + 1);
+        gl.uniform1i(this.uniforms["UTextureAlbedo"].glLocation, 1);
+        gl.bindTexture(gl.TEXTURE_2D, this.albedoTexture);
+
+        gl.activeTexture(gl.TEXTURE0 + 2);
+        gl.uniform1i(this.uniforms["UTextureNormal"].glLocation, 2);
+        gl.bindTexture(gl.TEXTURE_2D, this.normalTexture);
+    }
 }

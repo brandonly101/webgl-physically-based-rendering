@@ -15,9 +15,10 @@ class Mesh
     }
 
     // Create a mesh from a source file.
-    static createMesh(gl, srcMesh, materials)
+    static createMesh(gl, srcMesh, materials, bUseDrawArrays = false)
     {
         var result = new Mesh();
+        result.bUseDrawArrays = bUseDrawArrays;
 
         let vertices = [];
         let texcoords = [];
@@ -33,6 +34,7 @@ class Mesh
             switch (arrElem[0])
             {
             case "g":
+            case "o":
                 materialFaceIndices.push(faces.length);
                 break;
             case "v":
@@ -59,7 +61,7 @@ class Mesh
                 });
                 break;
             case "f":
-                for (let i = 1; i <= 3; i++)
+                for (let i = 1; i < arrElem.length; i++)
                 {
                     let vertexIndex = 0;
                     let texcoordIndex = 0;
@@ -75,6 +77,20 @@ class Mesh
                     {
                         normalIndex = Number.parseInt(arrFaces[2]) - 1;
                     }
+
+                    // Face may have more than 3 vertices because OBJ is weird ... if so,
+                    // simply add another triangle (as in, pick two older vertices and then
+                    // lop on the newer one past 3).
+                    if (i > 3)
+                    {
+                        let f1 = {};
+                        let f2 = {};
+                        Object.assign(f1, faces[faces.length - 3]);
+                        Object.assign(f2, faces[faces.length - 1]);
+                        faces.push(f1);
+                        faces.push(f2);
+                    }
+
                     faces.push(
                     {
                         "vertexIndex": vertexIndex,
@@ -85,11 +101,6 @@ class Mesh
                 break;
             }
         });
-
-        // Indicate that we want to use gl.drawArrays() for complex models (for now).
-        // Not performant, but maybe some day when I figure out how to properly
-        // use an indices array with a format that is not 16-bit.
-        result.indicesNum = faces.length;
 
         result.meshParts = [];
         let meshPart;
@@ -147,7 +158,7 @@ class Mesh
                 const face1 = faces[i + 0];
                 const face2 = faces[i + 1];
                 const face3 = faces[i + 2];
-                
+
                 const edge1 =
                 {
                     x: vertices[face2.vertexIndex].x - vertices[face1.vertexIndex].x,
@@ -168,7 +179,7 @@ class Mesh
                 const dV2 = texcoords[face3.texcoordIndex].v - texcoords[face2.texcoordIndex].v;
 
                 const det = 1.0 / (dU1 * dV2 - dU2 * dV1);
-                let tangent = 
+                let tangent =
                 [
                     det * (edge1.x * dV2 - edge2.x * dV1),
                     det * (edge1.y * dV2 - edge2.y * dV1),
@@ -458,7 +469,7 @@ class RenderObject
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(meshPart.normals), gl.STATIC_DRAW);
             }
 
-            // if (!mesh.meshParts[i].bUseDrawArrays)
+            if (!mesh.bUseDrawArrays)
             {
                 // Create vertex indices buffer.
                 buffers.indices = gl.createBuffer();
@@ -521,6 +532,7 @@ class RenderObject
             gl.useProgram(meshPart.material.shaderProgramObject.glShaderProgram);
 
             meshPart.material.shaderProgramObject.setUniforms();
+            meshPart.material.setActiveTextures();
 
             // Rebind buffers.
             gl.enableVertexAttribArray(attributes["AVertexPosition"].glLocation);
@@ -549,15 +561,15 @@ class RenderObject
             }
 
             // draw
-            // if (mesh.bUseDrawArrays)
-            // {
-            //     gl.drawArrays(gl.TRIANGLES, 0, mesh.indicesNum);
-            // }
-            // else
-            // {
-            gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
-            gl.drawElements(gl.TRIANGLES, meshPart.indices.length, gl.UNSIGNED_SHORT, 0);
-            // }
+            if (mesh.bUseDrawArrays)
+            {
+                gl.drawArrays(gl.TRIANGLES, 0, meshPart.vertices.length / 3);
+            }
+            else
+            {
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
+                gl.drawElements(gl.TRIANGLES, meshPart.indices.length, gl.UNSIGNED_SHORT, 0);
+            }
 
             gl.disableVertexAttribArray(attributes["AVertexPosition"].glLocation);
 
