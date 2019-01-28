@@ -83,14 +83,13 @@ function init()
     {
         meshMaterialArray.push(meshMaterialPalletStack);
     }
-    meshMaterialArray[9] = meshMaterialPulseFilter;
-    meshMaterialArray[14] = meshMaterialPallets;
-    meshMaterialArray[29] = meshMaterialPallets;
+    meshMaterialArray[1] = meshMaterialPulseFilter;
+    meshMaterialArray[2] = meshMaterialPallets;
+    meshMaterialArray[22] = meshMaterialPallets;
     var mesh = Mesh.createMesh(
         gl,
-        "assets/arc-pulse-core/source/PalletStack01_Paint/PalletStack01_Paint.obj",
-        meshMaterialArray,
-        true
+        "assets/arc-pulse-core/source/PalletStack01_Paint/PalletStack01_Paint_v2.obj",
+        meshMaterialArray
     );
 
     // Skyrim Claymore
