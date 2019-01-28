@@ -25,6 +25,7 @@ class Mesh
         let normals = [];
         let faceVertices = [];
         let materialFaceIndices = [];
+        let similarVertices = {};
 
         var arrObjLines = FileUtil.GetFile(srcMesh).split("\n");
         var faceToRender = 0;
@@ -78,6 +79,13 @@ class Mesh
                         normalIndex = Number.parseInt(arrFaces[2]) - 1;
                     }
 
+                    // Add face vertex w/ similar normals
+                    if (similarVertices[normalIndex] === undefined)
+                    {
+                        similarVertices[normalIndex] = [];
+                    }
+                    similarVertices[normalIndex].push(faceVertices.length);
+
                     // Face may have more than 3 vertices because OBJ is weird ... if so,
                     // simply add another triangle (as in, pick two older vertices and then
                     // lop on the newer one past 3).
@@ -118,6 +126,7 @@ class Mesh
                 meshPart.normals = [];
                 meshPart.indices = [];
                 meshPart.tangents = [];
+                meshPart.lastIndex = i;
 
                 meshPartLastIndex = i;
             }
@@ -187,11 +196,57 @@ class Mesh
                 ];
                 tangent = GLMathLib.normalize(tangent);
 
+                // For now, each vertex of the face will have the same tangent vector
                 for (let a = 0; a < 3; a++)
                 {
                     meshPart.tangents.push(tangent[0]);
                     meshPart.tangents.push(tangent[1]);
                     meshPart.tangents.push(tangent[2]);
+                }
+            }
+        }
+
+        // Average out the tangent vectors of similar vertices
+        for (let key in similarVertices)
+        {
+            const arrFaceVertexIndices = similarVertices[key];
+            let avgTangent = [0, 0, 0];
+
+            // Find average tangent vector of similar vertices
+            for (let i = 0; i < arrFaceVertexIndices.length; i++)
+            {
+                const index = arrFaceVertexIndices[i];
+
+                for (let j = 0; j < result.meshParts.length; j++)
+                {
+                    if (j + 1 == result.meshParts.length ||
+                        index < result.meshParts[j + 1].lastIndex)
+                    {
+                        const pseudoModuloIndex = index - result.meshParts[j].lastIndex;
+                        avgTangent[0] += result.meshParts[j].tangents[pseudoModuloIndex * 3 + 0];
+                        avgTangent[1] += result.meshParts[j].tangents[pseudoModuloIndex * 3 + 1];
+                        avgTangent[2] += result.meshParts[j].tangents[pseudoModuloIndex * 3 + 2];
+                        break;
+                    }
+                }
+            }
+
+            // Set the tangent vectors of similar vertices to the average tangent vector
+            for (let i = 0; i < arrFaceVertexIndices.length; i++)
+            {
+                const index = arrFaceVertexIndices[i];
+
+                for (let j = 0; j < result.meshParts.length; j++)
+                {
+                    if (j + 1 == result.meshParts.length ||
+                        index < result.meshParts[j + 1].lastIndex)
+                    {
+                        const pseudoModuloIndex = index - result.meshParts[j].lastIndex;
+                        result.meshParts[j].tangents[pseudoModuloIndex * 3 + 0] = avgTangent[0];
+                        result.meshParts[j].tangents[pseudoModuloIndex * 3 + 1] = avgTangent[1];
+                        result.meshParts[j].tangents[pseudoModuloIndex * 3 + 2] = avgTangent[2];
+                        break;
+                    }
                 }
             }
         }
