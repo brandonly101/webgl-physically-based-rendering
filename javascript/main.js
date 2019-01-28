@@ -123,7 +123,7 @@ function init()
     ////////////////////////////////////////////////////////////////////////////////
 
     Control.init();
-    Control.setMouseSensitivity(5.0);
+    Control.setMouseSensitivity(15.0);
 
     // Add an event listener to the input box.
     // document.getElementById("obj-upload").addEventListener("change", function(e)
