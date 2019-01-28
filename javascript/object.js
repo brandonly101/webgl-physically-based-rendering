@@ -23,7 +23,7 @@ class Mesh
         let vertices = [];
         let texcoords = [];
         let normals = [];
-        let faces = [];
+        let faceVertices = [];
         let materialFaceIndices = [];
 
         var arrObjLines = FileUtil.GetFile(srcMesh).split("\n");
@@ -35,7 +35,7 @@ class Mesh
             {
             case "g":
             case "o":
-                materialFaceIndices.push(faces.length);
+                materialFaceIndices.push(faceVertices.length);
                 break;
             case "v":
                 vertices.push(
@@ -85,13 +85,13 @@ class Mesh
                     {
                         let f1 = {};
                         let f2 = {};
-                        Object.assign(f1, faces[faces.length - 3]);
-                        Object.assign(f2, faces[faces.length - 1]);
-                        faces.push(f1);
-                        faces.push(f2);
+                        Object.assign(f1, faceVertices[faceVertices.length - 3]);
+                        Object.assign(f2, faceVertices[faceVertices.length - 1]);
+                        faceVertices.push(f1);
+                        faceVertices.push(f2);
                     }
 
-                    faces.push(
+                    faceVertices.push(
                     {
                         "vertexIndex": vertexIndex,
                         "texcoordIndex": texcoordIndex,
@@ -105,7 +105,7 @@ class Mesh
         result.meshParts = [];
         let meshPart;
         let meshPartLastIndex = 0;
-        for (let i = 0; i < faces.length; i++)
+        for (let i = 0; i < faceVertices.length; i++)
         {
             if (i == materialFaceIndices[result.meshParts.length])
             {
@@ -122,23 +122,23 @@ class Mesh
                 meshPartLastIndex = i;
             }
 
-            let face = faces[i];
+            let faceVertex = faceVertices[i];
 
-            meshPart.vertices.push(vertices[face.vertexIndex].x);
-            meshPart.vertices.push(vertices[face.vertexIndex].y);
-            meshPart.vertices.push(vertices[face.vertexIndex].z);
+            meshPart.vertices.push(vertices[faceVertex.vertexIndex].x);
+            meshPart.vertices.push(vertices[faceVertex.vertexIndex].y);
+            meshPart.vertices.push(vertices[faceVertex.vertexIndex].z);
 
             if (texcoords.length !== 0)
             {
-                meshPart.texcoords.push(texcoords[face.texcoordIndex].u);
-                meshPart.texcoords.push(texcoords[face.texcoordIndex].v);
+                meshPart.texcoords.push(texcoords[faceVertex.texcoordIndex].u);
+                meshPart.texcoords.push(texcoords[faceVertex.texcoordIndex].v);
             }
 
             if (normals.length !== 0)
             {
-                meshPart.normals.push(normals[face.normalIndex].x);
-                meshPart.normals.push(normals[face.normalIndex].y);
-                meshPart.normals.push(normals[face.normalIndex].z);
+                meshPart.normals.push(normals[faceVertex.normalIndex].x);
+                meshPart.normals.push(normals[faceVertex.normalIndex].y);
+                meshPart.normals.push(normals[faceVertex.normalIndex].z);
             }
             else
             {
@@ -155,9 +155,9 @@ class Mesh
             // Calculate and add tangents
             if (i % 3 === 0)
             {
-                const face1 = faces[i + 0];
-                const face2 = faces[i + 1];
-                const face3 = faces[i + 2];
+                const face1 = faceVertices[i + 0];
+                const face2 = faceVertices[i + 1];
+                const face3 = faceVertices[i + 2];
 
                 const edge1 =
                 {
