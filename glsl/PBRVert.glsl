@@ -61,8 +61,6 @@ void main(void)
     T = normalize(T - dot(N, T) * N);
     vec3 B = cross(N, T);
     B = B * AVertexTangent.w; // Correct for handedness
-    // vec3 B = normalize(vec3(UMatModel * vec4(AVertexBitangent, 0.0)));
-    // B = normalize(B - dot(N, B) * N - dot(T, B) * T);
 
     mat3 TBN = mat3(T, B, N);
     mat3 invTBN = transpose(TBN);

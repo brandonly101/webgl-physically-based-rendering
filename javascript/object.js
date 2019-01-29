@@ -80,11 +80,11 @@ class Mesh
                     }
 
                     // Add face vertex w/ similar normals
-                    if (similarVertices[vertexIndex] === undefined)
+                    if (similarVertices[texcoordIndex] === undefined)
                     {
-                        similarVertices[vertexIndex] = [];
+                        similarVertices[texcoordIndex] = [];
                     }
-                    similarVertices[vertexIndex].push(faceVertices.length);
+                    similarVertices[texcoordIndex].push(faceVertices.length);
 
                     // Face may have more than 3 vertices because OBJ is weird ... if so,
                     // simply add another triangle (as in, pick two older vertices and then
@@ -207,12 +207,11 @@ class Mesh
                 // For now, each vertex of the face will have the same tangent vector
                 for (let a = 0; a < 3; a++)
                 {
-                    const normalIndex = faceVertices[i + a].normalIndex;
                     let normal =
                     [
-                        normals[normalIndex].x,
-                        normals[normalIndex].y,
-                        normals[normalIndex].z
+                        normals[faceVertices[i + a].normalIndex].x,
+                        normals[faceVertices[i + a].normalIndex].y,
+                        normals[faceVertices[i + a].normalIndex].z
                     ];
 
                     // Gram-Schmidt process to orthonormalize vectors
