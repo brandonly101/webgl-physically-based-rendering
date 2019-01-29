@@ -170,7 +170,7 @@ class GLMathLib
         }
         else if (typeof u == 'number')
         {
-            result = v;
+            result = v.slice();
             for (var i = 0; i < v.length; i++)
             {
                 result[i] = result[i] * u;
@@ -193,7 +193,7 @@ class GLMathLib
         {
             result = result + (u[i]*v[i]);
         };
-        return Math.sqrt(result);
+        return result;
     }
 
     static cross(u, v)

@@ -80,11 +80,11 @@ class Mesh
                     }
 
                     // Add face vertex w/ similar normals
-                    if (similarVertices[normalIndex] === undefined)
+                    if (similarVertices[vertexIndex] === undefined)
                     {
-                        similarVertices[normalIndex] = [];
+                        similarVertices[vertexIndex] = [];
                     }
-                    similarVertices[normalIndex].push(faceVertices.length);
+                    similarVertices[vertexIndex].push(faceVertices.length);
 
                     // Face may have more than 3 vertices because OBJ is weird ... if so,
                     // simply add another triangle (as in, pick two older vertices and then
@@ -161,7 +161,7 @@ class Mesh
                 meshPart.indices.push(i - meshPartLastIndex);
             }
 
-            // Calculate and add tangents
+            // Calculate and add tangents and bitangents
             if (i % 3 === 0)
             {
                 const face1 = faceVertices[i + 0];
@@ -194,14 +194,44 @@ class Mesh
                     det * (edge1.y * dV2 - edge2.y * dV1),
                     det * (edge1.z * dV2 - edge2.z * dV1)
                 ];
-                tangent = GLMathLib.normalize(tangent);
+                // tangent = GLMathLib.normalize(tangent);
+
+                let bitangent =
+                [
+                    det * (edge2.x * dU1 - edge1.x * dU2),
+                    det * (edge2.y * dU1 - edge1.y * dU2),
+                    det * (edge2.z * dU1 - edge1.z * dU2)
+                ];
+                // bitangent = GLMathLib.normalize(bitangent);
 
                 // For now, each vertex of the face will have the same tangent vector
                 for (let a = 0; a < 3; a++)
                 {
+                    const normalIndex = faceVertices[i + a].normalIndex;
+                    let normal =
+                    [
+                        normals[normalIndex].x,
+                        normals[normalIndex].y,
+                        normals[normalIndex].z
+                    ];
+
+                    // Gram-Schmidt process to orthonormalize vectors
+                    // let newTangent = GLMathLib.normalize(GLMathLib.sub(tangent, GLMathLib.mult(GLMathLib.dot(normal, tangent), normal)));
+                    // let newBitangent = bitangent;
+                    // newBitangent = GLMathLib.normalize(GLMathLib.sub(
+                    //     GLMathLib.sub(bitangent, GLMathLib.mult(GLMathLib.dot(normal, bitangent), normal)),
+                    //     GLMathLib.mult(GLMathLib.dot(newTangent, bitangent), newTangent)
+                    // ));
+
+                    // if (GLMathLib.dot(GLMathLib.cross(normal, tangent), bitangent) < 0.0)
+                    // {
+                    //     newTangent = GLMathLib.mult(-1, newTangent);
+                    // }
+
                     meshPart.tangents.push(tangent[0]);
                     meshPart.tangents.push(tangent[1]);
                     meshPart.tangents.push(tangent[2]);
+                    meshPart.tangents.push(GLMathLib.dot(GLMathLib.cross(normal, tangent), bitangent) < 0.0 ? -1.0 : 1.0);
                 }
             }
         }
@@ -210,7 +240,10 @@ class Mesh
         for (let key in similarVertices)
         {
             const arrFaceVertexIndices = similarVertices[key];
-            let avgTangent = [0, 0, 0];
+            let countLeft = 0;
+            let countRight = 0;
+            let avgTangentLeft = [0, 0, 0];
+            let avgTangentRight = [0, 0, 0];
 
             // Find average tangent vector of similar vertices
             for (let i = 0; i < arrFaceVertexIndices.length; i++)
@@ -223,13 +256,26 @@ class Mesh
                         index < result.meshParts[j + 1].lastIndex)
                     {
                         const pseudoModuloIndex = index - result.meshParts[j].lastIndex;
-                        avgTangent[0] += result.meshParts[j].tangents[pseudoModuloIndex * 3 + 0];
-                        avgTangent[1] += result.meshParts[j].tangents[pseudoModuloIndex * 3 + 1];
-                        avgTangent[2] += result.meshParts[j].tangents[pseudoModuloIndex * 3 + 2];
+                        if (result.meshParts[j].tangents[pseudoModuloIndex * 4 + 3] == 1.0)
+                        {
+                            avgTangentRight[0] += result.meshParts[j].tangents[pseudoModuloIndex * 4 + 0];
+                            avgTangentRight[1] += result.meshParts[j].tangents[pseudoModuloIndex * 4 + 1];
+                            avgTangentRight[2] += result.meshParts[j].tangents[pseudoModuloIndex * 4 + 2];
+                            countRight++;
+                        }
+                        else
+                        {
+                            avgTangentLeft[0] += result.meshParts[j].tangents[pseudoModuloIndex * 4 + 0];
+                            avgTangentLeft[1] += result.meshParts[j].tangents[pseudoModuloIndex * 4 + 1];
+                            avgTangentLeft[2] += result.meshParts[j].tangents[pseudoModuloIndex * 4 + 2];
+                            countLeft++
+                        }
                         break;
                     }
                 }
             }
+            avgTangentLeft = GLMathLib.mult(1 / countLeft, avgTangentLeft);
+            avgTangentRight = GLMathLib.mult(1 / countRight, avgTangentRight);
 
             // Set the tangent vectors of similar vertices to the average tangent vector
             for (let i = 0; i < arrFaceVertexIndices.length; i++)
@@ -242,9 +288,18 @@ class Mesh
                         index < result.meshParts[j + 1].lastIndex)
                     {
                         const pseudoModuloIndex = index - result.meshParts[j].lastIndex;
-                        result.meshParts[j].tangents[pseudoModuloIndex * 3 + 0] = avgTangent[0];
-                        result.meshParts[j].tangents[pseudoModuloIndex * 3 + 1] = avgTangent[1];
-                        result.meshParts[j].tangents[pseudoModuloIndex * 3 + 2] = avgTangent[2];
+                        if (result.meshParts[j].tangents[pseudoModuloIndex * 4 + 3] == 1.0)
+                        {
+                            result.meshParts[j].tangents[pseudoModuloIndex * 4 + 0] = avgTangentRight[0];
+                            result.meshParts[j].tangents[pseudoModuloIndex * 4 + 1] = avgTangentRight[1];
+                            result.meshParts[j].tangents[pseudoModuloIndex * 4 + 2] = avgTangentRight[2];
+                        }
+                        else
+                        {
+                            result.meshParts[j].tangents[pseudoModuloIndex * 4 + 0] = avgTangentLeft[0];
+                            result.meshParts[j].tangents[pseudoModuloIndex * 4 + 1] = avgTangentLeft[1];
+                            result.meshParts[j].tangents[pseudoModuloIndex * 4 + 2] = avgTangentLeft[2];
+                        }
                         break;
                     }
                 }
@@ -612,7 +667,7 @@ class RenderObject
             {
                 gl.enableVertexAttribArray(attributes["AVertexTangent"].glLocation);
                 gl.bindBuffer(gl.ARRAY_BUFFER, buffers.tangents);
-                gl.vertexAttribPointer(attributes["AVertexTangent"].glLocation, 3, gl.FLOAT, false, 0, 0);
+                gl.vertexAttribPointer(attributes["AVertexTangent"].glLocation, 4, gl.FLOAT, false, 0, 0);
             }
 
             // draw
