@@ -20,11 +20,15 @@ varying vec3 VEnvMapI;
 varying vec3 VEnvMapN;
 
 varying vec3 VTextureCoordSkybox;
-varying vec4 VColor;
+
 varying vec2 VVertexTexCoord;
+varying vec3 VVertexNormal;
+varying vec3 VVertexTangent;
 
 varying vec3 VTanLightDir;
 varying vec3 VTanViewDir;
+
+varying vec3 VB;
 
 void main(void)
 {
@@ -55,12 +59,17 @@ void main(void)
     }
 
     // Add all the lights up.
-    VColor = (ColorAmbient + ColorDiffuse + ColorSpecular) * 0.9 + ColorEnvMap * 0.1;
-    // VColor = ColorEnvMap;
-    VColor.a = 1.0;
+    vec4 Color = vec4(0,0,0,1);
+    Color = (ColorAmbient + ColorDiffuse + ColorSpecular);// * 0.9 + ColorEnvMap * 0.1;
+    // Color = vec4(VVertexNormal, 1.0);
+    // Color = vec4(VVertexTangent, 1.0);
+    // Color = vec4(VB, 1.0);
+    // Color = vec4(VTanLightDir, 1.0);
+    // Color = ColorEnvMap;
+    Color.a = 1.0;
 
     // float gamma = 2.2;
     // VColor.rgb = pow(VColor.rgb, vec3(1.0/gamma));
 
-    gl_FragColor = VColor;
+    gl_FragColor = Color;
 }
