@@ -63,13 +63,9 @@ void main(void)
 
     // Specular light.
     ColorSpecular = vec4(0.0, 0.0, 0.0, 0.0);
-    if (dot(VTanViewDir, TanNormalDir) > 0.0)
-    {
-        vec3 Halfway = normalize(VTanLightDir + VTanViewDir);
-        ColorSpecular = pow(max(dot(TanNormalDir, Halfway), 0.0), 16.0) * vec4(1.0) * 0.35;
-        ColorSpecular = max(ColorSpecular, 0.0);
-        ColorSpecular = dot(TanNormalDir, VTanLightDir) != 0.0 ? ColorSpecular : vec4(0.0);
-    }
+    vec3 Halfway = normalize(VTanLightDir + VTanViewDir);
+    ColorSpecular = pow(max(dot(TanNormalDir, Halfway), 0.0), 16.0) * vec4(1.0) * 0.35;
+    ColorSpecular *= clamp(dot(VTanLightDir, TanNormalDir), 0.0, 1.0);
 
     // Add all the lights up.
     vec4 Color = vec4(0,0,0,1);
