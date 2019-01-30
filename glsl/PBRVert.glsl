@@ -31,11 +31,10 @@ varying vec3 VTextureCoordSkybox;
 varying vec2 VVertexTexCoord;
 varying vec3 VVertexNormal;
 varying vec3 VVertexTangent;
+varying vec3 VB;
 
 varying vec3 VTanLightDir;
 varying vec3 VTanViewDir;
-
-varying vec3 VB;
 
 // Utility function for transposing mat3, since WebGL GLSL does not support transpose()
 highp mat3 transpose(in highp mat3 inMatrix)
@@ -56,7 +55,7 @@ highp mat3 transpose(in highp mat3 inMatrix)
 void main(void)
 {
     // Create the inverse TBN matrix (in view space as well)
-    vec3 T = normalize(vec3(UMatModel * vec4(AVertexTangent.xyz, 0.0)));
+    vec3 T = normalize(vec3(UMatModel * AVertexTangent));
     vec3 N = normalize(vec3(UMatModel * vec4(AVertexNormal, 0.0)));
     T = normalize(T - dot(N, T) * N);
     vec3 B = cross(N, T);

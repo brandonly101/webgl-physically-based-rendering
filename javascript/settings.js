@@ -13,6 +13,6 @@ var Settings =
 {
 	yFOV: 65.0,
 	aspectRatio: 16.0 / 9.0,
-	nearClipPlane: 0.3,
+	nearClipPlane: 0.03,
 	farClipPlane: 1000.0,
 };

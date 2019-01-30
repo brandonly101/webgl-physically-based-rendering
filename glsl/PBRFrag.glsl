@@ -24,11 +24,20 @@ varying vec3 VTextureCoordSkybox;
 varying vec2 VVertexTexCoord;
 varying vec3 VVertexNormal;
 varying vec3 VVertexTangent;
+varying vec3 VB;
 
 varying vec3 VTanLightDir;
 varying vec3 VTanViewDir;
 
-varying vec3 VB;
+highp vec4 gammaDecode(vec4 encoded)
+{
+    return pow(encoded, vec4(2.2));
+}
+
+highp vec4 gammaCorrect(vec4 linear)
+{
+    return pow(linear, vec4(1.0 / 2.2));
+}
 
 void main(void)
 {
@@ -43,19 +52,23 @@ void main(void)
     // Calculate the color/intensities of each respective light.
     vec4 ColorAmbient, ColorDiffuse, ColorSpecular, VColor;
 
+    // Gamma uncorrect
+    vec4 ColorAlbedo = gammaDecode(texture2D(UTextureAlbedo, VVertexTexCoord));
+
     // Ambient light.
-    ColorAmbient = texture2D(UTextureAlbedo, VVertexTexCoord) * 0.35;
+    ColorAmbient = ColorAlbedo * 0.25;
 
     // Diffuse light.
-    ColorDiffuse = max(dot(TanNormalDir, VTanLightDir), 0.0) * texture2D(UTextureAlbedo, VVertexTexCoord) * 1.0;
+    ColorDiffuse = max(dot(TanNormalDir, VTanLightDir), 0.0) * ColorAlbedo * 0.65;
 
     // Specular light.
     ColorSpecular = vec4(0.0, 0.0, 0.0, 0.0);
     if (dot(VTanViewDir, TanNormalDir) > 0.0)
     {
         vec3 Halfway = normalize(VTanLightDir + VTanViewDir);
-        ColorSpecular = pow(max((dot(TanNormalDir, Halfway)), 0.0), 20.0) * vec4(1.0, 1.0, 1.0, 1.0) * 0.650;
+        ColorSpecular = pow(max(dot(TanNormalDir, Halfway), 0.0), 16.0) * vec4(1.0) * 0.35;
         ColorSpecular = max(ColorSpecular, 0.0);
+        ColorSpecular = dot(TanNormalDir, VTanLightDir) != 0.0 ? ColorSpecular : vec4(0.0);
     }
 
     // Add all the lights up.
@@ -65,11 +78,9 @@ void main(void)
     // Color = vec4(VVertexTangent, 1.0);
     // Color = vec4(VB, 1.0);
     // Color = vec4(VTanLightDir, 1.0);
-    // Color = ColorEnvMap;
-    Color.a = 1.0;
 
-    // float gamma = 2.2;
-    // VColor.rgb = pow(VColor.rgb, vec3(1.0/gamma));
+    Color = gammaCorrect(Color); // gamma correct
+    Color.a = 1.0;
 
     gl_FragColor = Color;
 }
