@@ -20,11 +20,7 @@ varying vec3 VEnvMapI;
 varying vec3 VEnvMapN;
 
 varying vec3 VTextureCoordSkybox;
-
 varying vec2 VVertexTexCoord;
-varying vec3 VVertexNormal;
-varying vec3 VVertexTangent;
-varying vec3 VB;
 
 varying vec3 VTanLightDir;
 varying vec3 VTanViewDir;
@@ -56,23 +52,20 @@ void main(void)
     vec4 ColorAlbedo = gammaDecode(texture2D(UTextureAlbedo, VVertexTexCoord));
 
     // Ambient light.
-    ColorAmbient = ColorAlbedo * 0.25;
+    ColorAmbient = ColorAlbedo * 0.2;
 
     // Diffuse light.
-    ColorDiffuse = max(dot(TanNormalDir, VTanLightDir), 0.0) * ColorAlbedo * 0.65;
+    ColorDiffuse = max(dot(TanNormalDir, VTanLightDir), 0.0) * ColorAlbedo * 0.55;
 
     // Specular light.
     ColorSpecular = vec4(0.0, 0.0, 0.0, 0.0);
     vec3 Halfway = normalize(VTanLightDir + VTanViewDir);
-    ColorSpecular = pow(max(dot(TanNormalDir, Halfway), 0.0), 16.0) * vec4(1.0) * 0.35;
+    ColorSpecular = pow(max(dot(TanNormalDir, Halfway), 0.0), 16.0) * vec4(1.0) * 0.25;
     ColorSpecular *= clamp(dot(VTanLightDir, TanNormalDir), 0.0, 1.0);
 
     // Add all the lights up.
     vec4 Color = vec4(0,0,0,1);
     Color = (ColorAmbient + ColorDiffuse + ColorSpecular);// * 0.9 + ColorEnvMap * 0.1;
-    // Color = vec4(VVertexNormal, 1.0);
-    // Color = vec4(VVertexTangent, 1.0);
-    // Color = vec4(VB, 1.0);
     // Color = vec4(VTanLightDir, 1.0);
 
     Color = gammaCorrect(Color); // gamma correct

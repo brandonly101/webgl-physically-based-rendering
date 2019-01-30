@@ -9,7 +9,7 @@ precision highp float;
 attribute vec3 AVertexPosition;
 attribute vec2 AVertexTexCoord;
 attribute vec3 AVertexNormal;
-attribute vec3 AVertexTangent;
+attribute vec4 AVertexTangent;
 
 // Uniforms
 uniform vec4 ULightPosition;
@@ -52,10 +52,12 @@ highp mat3 transpose(in highp mat3 inMatrix)
 void main(void)
 {
     // Create the inverse TBN matrix (in view space as well)
-    vec3 T = normalize(vec3(UMatModel * vec4(AVertexTangent, 0.0)));
+    vec3 T = normalize(vec3(UMatModel * AVertexTangent));
     vec3 N = normalize(vec3(UMatModel * vec4(AVertexNormal, 0.0)));
-    T = normalize(T - dot(T, N) * N);
-    vec3 B = cross(T, N);
+    T = normalize(T - dot(N, T) * N);
+    vec3 B = cross(N, T);
+    B = B * AVertexTangent.w; // Correct for handedness
+
     mat3 TBN = mat3(T, B, N);
     mat3 invTBN = transpose(TBN);
 

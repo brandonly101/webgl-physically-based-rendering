@@ -29,9 +29,6 @@ varying vec3 VEnvMapN;
 
 varying vec3 VTextureCoordSkybox;
 varying vec2 VVertexTexCoord;
-varying vec3 VVertexNormal;
-varying vec3 VVertexTangent;
-varying vec3 VB;
 
 varying vec3 VTanLightDir;
 varying vec3 VTanViewDir;
@@ -79,9 +76,6 @@ void main(void)
     VEnvMapN = normalize(AVertexNormal);
 
     VVertexTexCoord = AVertexTexCoord;
-    VVertexNormal = N;
-    VVertexTangent = T;
-    VB = B;
 
     gl_Position = UMatMVP * vec4(AVertexPosition, 1.0);
 }
