@@ -14,6 +14,8 @@ uniform samplerCube USamplerCube;
 
 uniform sampler2D UTextureAlbedo;
 uniform sampler2D UTextureNormal;
+uniform sampler2D UTextureMetallic;
+uniform sampler2D UTextureRoughness;
 
 // Variables passed from vert to pixel
 varying vec3 VEnvMapI;

@@ -158,7 +158,7 @@ class MaterialSkybox
 
         for (let i = 0; i < cubeFaces.length; i++)
         {
-            gl.texImage2D(cubeFaces[i][1], 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
+            gl.texImage2D(cubeFaces[i][1], 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
 
             let image = FileUtil.LoadImage(cubeFaces[i][0], () =>
             {
@@ -215,7 +215,9 @@ class MaterialPBR
 
                 // PBR-specific Uniforms
                 "UTextureAlbedo" : "sampler2D",
-                "UTextureNormal" : "sampler2D"
+                "UTextureNormal" : "sampler2D",
+                "UTextureMetallic" : "sampler2D",
+                "UTextureRoughness" : "sampler2D"
             }
         );
 
@@ -232,6 +234,16 @@ class MaterialPBR
         this.normalTexture = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0 + 2);
         gl.bindTexture(gl.TEXTURE_2D, this.normalTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
+
+        this.metallicTexture = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + 3);
+        gl.bindTexture(gl.TEXTURE_2D, this.metallicTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
+
+        this.roughnessTexture = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + 3);
+        gl.bindTexture(gl.TEXTURE_2D, this.roughnessTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
     }
 
@@ -265,8 +277,8 @@ class MaterialPBR
 
     setAlbedoTexture(srcImage) { this.setTextureImage(srcImage, this.albedoTexture, 1); }
     setNormalTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 2); }
-    setMetalnessTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 3); }
-    setRoughnessTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 4); }
+    setMetallicTexture(srcImage) { this.setTextureImage(srcImage, this.metallicTexture, 3); }
+    setRoughnessTexture(srcImage) { this.setTextureImage(srcImage, this.roughnessTexture, 4); }
 
     setActiveTextures()
     {
@@ -281,5 +293,13 @@ class MaterialPBR
         gl.activeTexture(gl.TEXTURE0 + 2);
         gl.bindTexture(gl.TEXTURE_2D, this.normalTexture);
         gl.uniform1i(this.uniforms["UTextureNormal"].glLocation, 2);
+
+        gl.activeTexture(gl.TEXTURE0 + 3);
+        gl.bindTexture(gl.TEXTURE_2D, this.metallicTexture);
+        gl.uniform1i(this.uniforms["UTextureMetallic"].glLocation, 3);
+        
+        gl.activeTexture(gl.TEXTURE0 + 4);
+        gl.bindTexture(gl.TEXTURE_2D, this.roughnessTexture);
+        gl.uniform1i(this.uniforms["UTextureRoughness"].glLocation, 4);
     }
 }
