@@ -4,6 +4,8 @@
 //
 precision highp float;
 
+const float PI = 3.1415927;
+
 // Uniforms
 uniform mat4 UMatModel;
 uniform mat4 UMatView;
@@ -27,16 +29,58 @@ varying vec2 VVertexTexCoord;
 varying vec3 VTanLightDir;
 varying vec3 VTanViewDir;
 
-highp vec4 gammaDecode(vec4 encoded)
+// Physically-based rendering functions
+
+// Schlick Approximation (of Fresnel Reflectance) (F function),
+// with additional parameterization based on metallic such that F0
+// is 0.04 for metallic at 0. 
+vec3 SchlickApprox(vec3 n, vec3 l, vec3 albedo, float metallic)
 {
-    return pow(encoded, vec4(2.2));
+    vec3 F0 = mix(vec3(0.04), albedo, metallic); // specular color
+    return F0 + (1.0 - F0) * pow(1.0 - max(0.0, dot(n, l)), 5.0);
 }
 
-highp vec4 gammaCorrect(vec4 linear)
+// Combined G2 Smith height-correlated masking-shadowing function and
+// specular microfacet BRDF denominator (G function)
+float SmithG2SpecBRDF(vec3 l, vec3 v, vec3 n, float roughness)
 {
-    return pow(linear, vec4(1.0 / 2.2));
+    return 0.5 / mix(2.0 * abs(dot(n, l)) * abs(dot(n, v)), abs(dot(n, l)) + abs(dot(n, v)), roughness * roughness);
 }
 
+// GGX (Trowbridge & Reitz) Distribution (D function)
+float GGX(vec3 n, vec3 m, float roughness)
+{
+    float a = roughness * roughness;
+    float a2 = a * a;
+    float num = (dot(n, m) > 0.0 ? 1.0 : 0.0) * a2;
+    float denom = PI * pow(1.0 + pow(dot(n, m), 2.0) * (a2 - 1.0), 2.0);
+    return num / denom;
+}
+
+// Bidirectional Reflectance Distribution Function
+vec3 BRDF(vec3 l, vec3 v, vec3 n, vec3 albedo, float metallic, float roughness)
+{
+    // Specular Microfacet BRDF calculations
+    vec3 h = normalize(l + v);
+    vec3 F = SchlickApprox(h, l, albedo, metallic);
+    float GDenom = SmithG2SpecBRDF(l, v, n, roughness);
+    float D = GGX(n, h, roughness);
+
+    // Specular BRDF
+    vec3 BRDFSpecular = F * GDenom * D;
+
+    // Diffuse Lambertian BRDF, with additional parameterization that sets the
+    // albedo to just black if fully metal.
+    vec3 BRDFDiffuse = albedo / vec3(PI) * (1.0 - F);
+
+    return BRDFSpecular + BRDFDiffuse;
+}
+
+// Gamma decode and correct functions
+highp vec4 gammaDecode(vec4 encoded) { return pow(encoded, vec4(2.2)); }
+highp vec4 gammaCorrect(vec4 linear) { return pow(linear, vec4(1.0 / 2.2)); }
+
+// Main entry point for pixel shader
 void main(void)
 {
     // Normal map
@@ -53,22 +97,17 @@ void main(void)
     // Gamma uncorrect
     vec4 ColorBase = gammaDecode(texture2D(UTextureBaseColor, VVertexTexCoord));
 
-    // Ambient light.
-    ColorAmbient = ColorBase * 0.2;
+    vec3 ColorDirLight = vec3(1.0);
+    float Metallic = texture2D(UTextureMetallic, VVertexTexCoord).r;
+    float Roughness = texture2D(UTextureRoughness, VVertexTexCoord).r;
 
-    // Diffuse light.
-    ColorDiffuse = max(dot(TanNormalDir, VTanLightDir), 0.0) * ColorBase * 0.55;
+    // Metallic = 0.0;
+    // Roughness = 1.0;
 
-    // Specular light.
-    ColorSpecular = vec4(0.0, 0.0, 0.0, 0.0);
-    vec3 Halfway = normalize(VTanLightDir + VTanViewDir);
-    ColorSpecular = pow(max(dot(TanNormalDir, Halfway), 0.0), 16.0) * vec4(1.0) * 0.25;
-    ColorSpecular *= clamp(dot(VTanLightDir, TanNormalDir), 0.0, 1.0);
-
-    // Add all the lights up.
-    vec4 Color = vec4(0,0,0,1);
-    Color = (ColorAmbient + ColorDiffuse + ColorSpecular);// * 0.9 + ColorEnvMap * 0.1;
-    // Color = vec4(VTanLightDir, 1.0);
+    vec4 Color = vec4(0.0);
+    Color.rgb = BRDF(VTanLightDir, VTanViewDir, TanNormalDir, ColorBase.rgb, Metallic, Roughness);
+    Color.rgb *= ColorDirLight;
+    Color.rgb *= dot(TanNormalDir, VTanLightDir);
 
     Color = gammaCorrect(Color); // gamma correct
     Color.a = 1.0;
