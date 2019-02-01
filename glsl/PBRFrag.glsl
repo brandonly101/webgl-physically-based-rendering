@@ -12,7 +12,7 @@ uniform mat4 UMatNormal;
 
 uniform samplerCube USamplerCube;
 
-uniform sampler2D UTextureAlbedo;
+uniform sampler2D UTextureBaseColor;
 uniform sampler2D UTextureNormal;
 uniform sampler2D UTextureMetallic;
 uniform sampler2D UTextureRoughness;
@@ -51,13 +51,13 @@ void main(void)
     vec4 ColorAmbient, ColorDiffuse, ColorSpecular, VColor;
 
     // Gamma uncorrect
-    vec4 ColorAlbedo = gammaDecode(texture2D(UTextureAlbedo, VVertexTexCoord));
+    vec4 ColorBase = gammaDecode(texture2D(UTextureBaseColor, VVertexTexCoord));
 
     // Ambient light.
-    ColorAmbient = ColorAlbedo * 0.2;
+    ColorAmbient = ColorBase * 0.2;
 
     // Diffuse light.
-    ColorDiffuse = max(dot(TanNormalDir, VTanLightDir), 0.0) * ColorAlbedo * 0.55;
+    ColorDiffuse = max(dot(TanNormalDir, VTanLightDir), 0.0) * ColorBase * 0.55;
 
     // Specular light.
     ColorSpecular = vec4(0.0, 0.0, 0.0, 0.0);

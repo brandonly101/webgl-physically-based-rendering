@@ -67,19 +67,19 @@ function init()
 
     // ARC Pulse Core with PBR-authored textures
     var meshMaterialPalletStack = new MaterialPBR(gl);
-    meshMaterialPalletStack.setAlbedoTexture("assets/arc-pulse-core/textures/MAT_PalletStack_01_Base_Color.png");
+    meshMaterialPalletStack.setBaseColorTexture("assets/arc-pulse-core/textures/MAT_PalletStack_01_Base_Color.png");
     meshMaterialPalletStack.setNormalTexture("assets/arc-pulse-core/textures/MAT_PalletStack_01_Normal_DirectX.png");
     meshMaterialPalletStack.setMetallicTexture("assets/arc-pulse-core/textures/MAT_PalletStack_01_Metallic.png");
     meshMaterialPalletStack.setRoughnessTexture("assets/arc-pulse-core/textures/MAT_PalletStack_01_Roughness.png");
 
     var meshMaterialPulseFilter = new MaterialPBR(gl);
-    meshMaterialPulseFilter.setAlbedoTexture("assets/arc-pulse-core/textures/MAT_PulseFilter_Base_Color.png");
+    meshMaterialPulseFilter.setBaseColorTexture("assets/arc-pulse-core/textures/MAT_PulseFilter_Base_Color.png");
     meshMaterialPulseFilter.setNormalTexture("assets/arc-pulse-core/textures/MAT_PulseFilter_Normal_DirectX.png");
     meshMaterialPulseFilter.setMetallicTexture("assets/arc-pulse-core/textures/MAT_PulseFilter_Metallic.png");
     meshMaterialPulseFilter.setRoughnessTexture("assets/arc-pulse-core/textures/MAT_PulseFilter_Roughness.png");
 
     var meshMaterialPallets = new MaterialPBR(gl);
-    meshMaterialPallets.setAlbedoTexture("assets/arc-pulse-core/textures/MAT_Scifi_Pallets_Base_Color.png");
+    meshMaterialPallets.setBaseColorTexture("assets/arc-pulse-core/textures/MAT_Scifi_Pallets_Base_Color.png");
     meshMaterialPallets.setNormalTexture("assets/arc-pulse-core/textures/MAT_Scifi_Pallets_Normal_DirectX.png");
     meshMaterialPallets.setMetallicTexture("assets/arc-pulse-core/textures/MAT_Scifi_Pallets_Metallic.png");
     meshMaterialPallets.setRoughnessTexture("assets/arc-pulse-core/textures/MAT_Scifi_Pallets_Roughness.png");

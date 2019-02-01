@@ -214,7 +214,7 @@ class MaterialPBR
                 "UMatCameraRot" : "mat4",
 
                 // PBR-specific Uniforms
-                "UTextureAlbedo" : "sampler2D",
+                "UTextureBaseColor" : "sampler2D",
                 "UTextureNormal" : "sampler2D",
                 "UTextureMetallic" : "sampler2D",
                 "UTextureRoughness" : "sampler2D"
@@ -226,9 +226,9 @@ class MaterialPBR
         this.attributes = this.shaderProgramObject.attributes;
         this.uniforms = this.shaderProgramObject.uniforms;
 
-        this.albedoTexture = gl.createTexture();
+        this.baseColorTexture = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0 + 1);
-        gl.bindTexture(gl.TEXTURE_2D, this.albedoTexture);
+        gl.bindTexture(gl.TEXTURE_2D, this.baseColorTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
 
         this.normalTexture = gl.createTexture();
@@ -275,7 +275,7 @@ class MaterialPBR
         });
     }
 
-    setAlbedoTexture(srcImage) { this.setTextureImage(srcImage, this.albedoTexture, 1); }
+    setBaseColorTexture(srcImage) { this.setTextureImage(srcImage, this.baseColorTexture, 1); }
     setNormalTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 2); }
     setMetallicTexture(srcImage) { this.setTextureImage(srcImage, this.metallicTexture, 3); }
     setRoughnessTexture(srcImage) { this.setTextureImage(srcImage, this.roughnessTexture, 4); }
@@ -287,8 +287,8 @@ class MaterialPBR
         gl.uniform1i(this.uniforms["USamplerCube"].glLocation, 0);
 
         gl.activeTexture(gl.TEXTURE0 + 1);
-        gl.bindTexture(gl.TEXTURE_2D, this.albedoTexture);
-        gl.uniform1i(this.uniforms["UTextureAlbedo"].glLocation, 1);
+        gl.bindTexture(gl.TEXTURE_2D, this.baseColorTexture);
+        gl.uniform1i(this.uniforms["UTextureBaseColor"].glLocation, 1);
 
         gl.activeTexture(gl.TEXTURE0 + 2);
         gl.bindTexture(gl.TEXTURE_2D, this.normalTexture);
