@@ -60,6 +60,7 @@ float GGX(vec3 n, vec3 m, float roughness)
 // Bidirectional Reflectance Distribution Function
 vec3 BRDF(vec3 l, vec3 v, vec3 n, vec3 albedo, float metallic, float roughness)
 {
+    roughness = clamp(roughness, 0.1, 1.0);
     // Specular Microfacet BRDF calculations
     vec3 h = normalize(l + v);
     vec3 F = SchlickApprox(h, l, albedo, metallic);
@@ -91,9 +92,6 @@ void main(void)
     vec3 EnvMapR = reflect(VEnvMapI, VEnvMapN);
     vec4 ColorEnvMap = textureCube(USamplerCube, EnvMapR);
 
-    // Calculate the color/intensities of each respective light.
-    vec4 ColorAmbient, ColorDiffuse, ColorSpecular, VColor;
-
     // Gamma uncorrect
     vec4 ColorBase = gammaDecode(texture2D(UTextureBaseColor, VVertexTexCoord));
 
@@ -107,7 +105,7 @@ void main(void)
     vec4 Color = vec4(0.0);
     Color.rgb = BRDF(VTanLightDir, VTanViewDir, TanNormalDir, ColorBase.rgb, Metallic, Roughness);
     Color.rgb *= ColorDirLight;
-    Color.rgb *= dot(TanNormalDir, VTanLightDir);
+    Color.rgb *= max(0.0, dot(TanNormalDir, VTanLightDir));
 
     Color = gammaCorrect(Color); // gamma correct
     Color.a = 1.0;

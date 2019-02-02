@@ -207,7 +207,7 @@ class GLMathLib
 
     static normalize(u)
     {
-        var mag = this.dot(u, u);
+        var mag = Math.sqrt(this.dot(u, u));
         if (u.length == 3)
         {
             return this.vec3(u[0]/mag, u[1]/mag, u[2]/mag);

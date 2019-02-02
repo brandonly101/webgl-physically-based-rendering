@@ -15,7 +15,7 @@ class Mesh
     }
 
     // Create a mesh from a source file.
-    static createMesh(gl, srcMesh, materials, bUseDrawArrays = false)
+    static createMesh(srcMesh, materials, bUseDrawArrays = false)
     {
         var result = new Mesh();
         result.bUseDrawArrays = bUseDrawArrays;
@@ -214,19 +214,6 @@ class Mesh
                         normals[faceVertices[i + a].normalIndex].z
                     ];
 
-                    // Gram-Schmidt process to orthonormalize vectors
-                    // let newTangent = GLMathLib.normalize(GLMathLib.sub(tangent, GLMathLib.mult(GLMathLib.dot(normal, tangent), normal)));
-                    // let newBitangent = bitangent;
-                    // newBitangent = GLMathLib.normalize(GLMathLib.sub(
-                    //     GLMathLib.sub(bitangent, GLMathLib.mult(GLMathLib.dot(normal, bitangent), normal)),
-                    //     GLMathLib.mult(GLMathLib.dot(newTangent, bitangent), newTangent)
-                    // ));
-
-                    // if (GLMathLib.dot(GLMathLib.cross(normal, tangent), bitangent) < 0.0)
-                    // {
-                    //     newTangent = GLMathLib.mult(-1, newTangent);
-                    // }
-
                     meshPart.tangents.push(tangent[0]);
                     meshPart.tangents.push(tangent[1]);
                     meshPart.tangents.push(tangent[2]);
@@ -406,18 +393,17 @@ class Mesh
     }
 
     // Create a sphere mesh.
-    static createSphere(nDiv)
+    static createSphere(nDiv, material, bUseDrawArrays = false)
     {
         var result = new Mesh();
+        result.bUseDrawArrays = bUseDrawArrays;
+
         result.meshParts = [{}];
+        result.meshParts[0].material = material;
 
-        result.meshParts[0].vertices = [];
-        result.meshParts[0].normals = [];
-        result.meshParts[0].indices = [];
-
-        let vertices = result.meshParts[0].vertices;
-        let normals = result.meshParts[0].normals;
-        let indices = result.meshParts[0].indices;
+        let vertices = [];
+        let normals = [];
+        let indices = [];
 
         var va = [0, 0, -1];
         var vb = [0.0, 0.942809, 0.333333];
@@ -464,6 +450,10 @@ class Mesh
 
         // Run the function that calls it all.
         tetrahedron(va, vb, vc, vd, nDiv);
+
+        result.meshParts[0].vertices = vertices;
+        result.meshParts[0].normals = normals;
+        result.meshParts[0].indices = indices;
 
         return result;
     }
@@ -635,7 +625,6 @@ class RenderObject
 
             const buffers = bufferParts[i];
             const attributes = meshPart.material.shaderProgramObject.attributes;
-            const uniforms = meshPart.material.shaderProgramObject.uniforms;
 
             // Activate the WebGL shader program object.
             gl.useProgram(meshPart.material.shaderProgramObject.glShaderProgram);

@@ -65,6 +65,10 @@ function init()
 
     RenderObjectSkybox = new RenderObject(gl, MeshSkybox);
 
+    // Sphere
+    // var materialSphere = new MaterialPBR(gl);
+    // var mesh = Mesh.createSphere(5, materialSphere);
+
     // ARC Pulse Core with PBR-authored textures
     var meshMaterialPalletStack = new MaterialPBR(gl);
     meshMaterialPalletStack.setBaseColorTexture("assets/arc-pulse-core/textures/MAT_PalletStack_01_Base_Color.png");
@@ -93,7 +97,6 @@ function init()
     meshMaterialArray[2] = meshMaterialPallets;
     meshMaterialArray[22] = meshMaterialPallets;
     var mesh = Mesh.createMesh(
-        gl,
         "assets/arc-pulse-core/source/PalletStack01_Paint/PalletStack01_Paint_v2.obj",
         meshMaterialArray
     );
@@ -103,7 +106,6 @@ function init()
     // meshMaterial.setAlbedoTexture("assets/SkyrimIronClaymore/SkyrimIronClaymore.fbm/IronClaymore.jpg");
     // meshMaterial.setNormalTexture("assets/SkyrimIronClaymore/SkyrimIronClaymore.fbm/IronClaymore_n.jpg");
     // var mesh = Mesh.createMesh(
-    //     gl,
     //     "assets/SkyrimIronClaymore/SkyrimIronClaymore.obj",
     //     [
     //         null,
