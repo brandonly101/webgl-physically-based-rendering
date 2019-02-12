@@ -11,6 +11,6 @@ varying vec3 VTextureCoordSkybox;
 
 void main(void)
 {
-    VTextureCoordSkybox = AVertexPosition;
+    VTextureCoordSkybox = vec3(-AVertexPosition.x, AVertexPosition.y, AVertexPosition.z);
     gl_Position = UMatMVP * vec4(AVertexPosition, 1.0);
 }
