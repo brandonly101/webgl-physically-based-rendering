@@ -117,22 +117,27 @@ class MaterialSkybox
     constructor(gl)
     {
         this.gl = gl;
-        this.shaderProgramObject = new ShaderProgramObject(gl, "glsl/SkyboxVert.glsl", "glsl/SkyboxFrag.glsl",
-        {
-            "AVertexPosition" : "vec3"
-        },
+        this.shaderProgramObjectSkybox = new ShaderProgramObject(gl, "glsl/SkyboxVert.glsl", "glsl/SkyboxFrag.glsl",
+        { "AVertexPosition" : "vec3" },
         {
             // Vertex Uniforms
             "UMatMVP" : "mat4",
             // Fragment Uniforms
-            "USamplerCube" : "samplerCube"
+            "UTexCubeEnv" : "samplerCube"
         });
+        this.shaderProgramObjectIrradiance = new ShaderProgramObject(gl, "glsl/IrradianceVert.glsl", "glsl/IrradianceFrag.glsl",
+        { "AVertexPosition" : "vec3" },
+        {
+            // Vertex Uniforms
+            "UMatMVP" : "mat4",
+            // Fragment Uniforms
+            "UTexCubeEnv" : "samplerCube"
+        });
+        this.shaderProgramObject = this.shaderProgramObjectSkybox;
 
         gl.useProgram(this.shaderProgramObject.glShaderProgram);
 
-        this.attributes = this.shaderProgramObject.attributes;
-        this.uniforms = this.shaderProgramObject.uniforms;
-
+        // Create a WebGL texture object for the environment cubemap
         this.skyboxTexture = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.skyboxTexture);
@@ -141,9 +146,21 @@ class MaterialSkybox
         gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+        // Create a WebGL texture object for the diffuse irradiance cubemap
+        this.irradianceTexture = gl.createTexture();
+        gl.activeTexture(gl.TEXTURE0 + 1);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.irradianceTexture);
+
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_CUBE_MAP, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+        this.numLoadedFaces = 0;
     }
 
-    setSkyboxTexture(src)
+    setSkyboxTexture(src, loadedFacesCallback = null)
     {
         const gl = this.gl;
         const cubeFaces =
@@ -156,6 +173,12 @@ class MaterialSkybox
             ["assets/skybox/" + src + "/negz.jpg", gl.TEXTURE_CUBE_MAP_NEGATIVE_Z]
         ];
 
+        // Set the environment cubemap textures
+        
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.skyboxTexture);
+        
+        const mat = this;
         for (let i = 0; i < cubeFaces.length; i++)
         {
             gl.texImage2D(cubeFaces[i][1], 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
@@ -165,7 +188,28 @@ class MaterialSkybox
                 gl.activeTexture(gl.TEXTURE0);
                 gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.skyboxTexture);
                 gl.texImage2D(cubeFaces[i][1], 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+                mat.numLoadedFaces++;
+                if (mat.numLoadedFaces == 6 && loadedFacesCallback != null)
+                {
+                    loadedFacesCallback();
+                }
             });
+        }
+
+        // Set the diffuse irradiance cubemap textures. Once the cubemap is fully-loaded,
+        // we will render filtered views of the skybox to the textures
+
+        gl.activeTexture(gl.TEXTURE0 + 1);
+        gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.irradianceTexture);
+
+        // Construct a contiguous array of white pixels for a 64 x 64 texture
+        let arrPixelColors = [];
+        for (let a = 0; a < 64 * 64; a++) arrPixelColors = arrPixelColors.concat([255, 255, 255, 255]);
+
+        // Create the 64 x 64 textures with the specified size
+        for (let i = 0; i < cubeFaces.length; i++)
+        {
+            gl.texImage2D(cubeFaces[i][1], 0, gl.RGBA, 64, 64, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(arrPixelColors));
         }
     }
 
@@ -174,9 +218,11 @@ class MaterialSkybox
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_CUBE_MAP, this.skyboxTexture);
 
+        const uniforms = this.shaderProgramObject.uniforms;
+
         // Cheeky hack; reserve TEXTURE0 for the environment map texture, not just for the
         // skybox rendering but for all other shader objects as well.
-        gl.uniform1i(this.uniforms["USamplerCube"].glLocation, 0);
+        gl.uniform1i(uniforms["UTexCubeEnv"].glLocation, 0);
     }
 }
 
@@ -209,7 +255,8 @@ class MaterialPBR
                 "UMatNormal" : "mat4",
 
                 // Fragment Uniforms
-                "USamplerCube" : "samplerCube",
+                "UTexCubeEnv" : "samplerCube",
+                "UTexCubeIrradiance" : "samplerCube",
                 "UMatViewInv" : "mat4",
                 "UMatCameraRot" : "mat4",
 
@@ -223,26 +270,23 @@ class MaterialPBR
 
         gl.useProgram(this.shaderProgramObject.glShaderProgram);
 
-        this.attributes = this.shaderProgramObject.attributes;
-        this.uniforms = this.shaderProgramObject.uniforms;
-
         this.baseColorTexture = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + 1);
+        gl.activeTexture(gl.TEXTURE0 + 2);
         gl.bindTexture(gl.TEXTURE_2D, this.baseColorTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
 
         this.normalTexture = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + 2);
+        gl.activeTexture(gl.TEXTURE0 + 3);
         gl.bindTexture(gl.TEXTURE_2D, this.normalTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
 
         this.metallicTexture = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + 3);
+        gl.activeTexture(gl.TEXTURE0 + 4);
         gl.bindTexture(gl.TEXTURE_2D, this.metallicTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
 
         this.roughnessTexture = gl.createTexture();
-        gl.activeTexture(gl.TEXTURE0 + 3);
+        gl.activeTexture(gl.TEXTURE0 + 5);
         gl.bindTexture(gl.TEXTURE_2D, this.roughnessTexture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([255, 255, 255, 255]));
     }
@@ -275,31 +319,34 @@ class MaterialPBR
         });
     }
 
-    setBaseColorTexture(srcImage) { this.setTextureImage(srcImage, this.baseColorTexture, 1); }
-    setNormalTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 2); }
-    setMetallicTexture(srcImage) { this.setTextureImage(srcImage, this.metallicTexture, 3); }
-    setRoughnessTexture(srcImage) { this.setTextureImage(srcImage, this.roughnessTexture, 4); }
+    setBaseColorTexture(srcImage) { this.setTextureImage(srcImage, this.baseColorTexture, 2); }
+    setNormalTexture(srcImage) { this.setTextureImage(srcImage, this.normalTexture, 3); }
+    setMetallicTexture(srcImage) { this.setTextureImage(srcImage, this.metallicTexture, 4); }
+    setRoughnessTexture(srcImage) { this.setTextureImage(srcImage, this.roughnessTexture, 5); }
 
     setActiveTextures()
     {
+        const uniforms = this.shaderProgramObject.uniforms;
+
         // Cheeky hack; reserve TEXTURE0 for the environment map texture (hence why
         // albedo textures start at unit 1 rather than 0).
-        gl.uniform1i(this.uniforms["USamplerCube"].glLocation, 0);
-
-        gl.activeTexture(gl.TEXTURE0 + 1);
-        gl.bindTexture(gl.TEXTURE_2D, this.baseColorTexture);
-        gl.uniform1i(this.uniforms["UTextureBaseColor"].glLocation, 1);
+        gl.uniform1i(uniforms["UTexCubeEnv"].glLocation, 0);
+        gl.uniform1i(uniforms["UTexCubeIrradiance"].glLocation, 1);
 
         gl.activeTexture(gl.TEXTURE0 + 2);
-        gl.bindTexture(gl.TEXTURE_2D, this.normalTexture);
-        gl.uniform1i(this.uniforms["UTextureNormal"].glLocation, 2);
+        gl.bindTexture(gl.TEXTURE_2D, this.baseColorTexture);
+        gl.uniform1i(uniforms["UTextureBaseColor"].glLocation, 2);
 
         gl.activeTexture(gl.TEXTURE0 + 3);
-        gl.bindTexture(gl.TEXTURE_2D, this.metallicTexture);
-        gl.uniform1i(this.uniforms["UTextureMetallic"].glLocation, 3);
-        
+        gl.bindTexture(gl.TEXTURE_2D, this.normalTexture);
+        gl.uniform1i(uniforms["UTextureNormal"].glLocation, 3);
+
         gl.activeTexture(gl.TEXTURE0 + 4);
+        gl.bindTexture(gl.TEXTURE_2D, this.metallicTexture);
+        gl.uniform1i(uniforms["UTextureMetallic"].glLocation, 4);
+        
+        gl.activeTexture(gl.TEXTURE0 + 5);
         gl.bindTexture(gl.TEXTURE_2D, this.roughnessTexture);
-        gl.uniform1i(this.uniforms["UTextureRoughness"].glLocation, 4);
+        gl.uniform1i(uniforms["UTextureRoughness"].glLocation, 5);
     }
 }

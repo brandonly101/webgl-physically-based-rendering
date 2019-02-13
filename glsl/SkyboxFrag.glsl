@@ -4,10 +4,10 @@
 //
 precision mediump float;
 
-uniform samplerCube USamplerCube;
+uniform samplerCube UTexCubeEnv;
 varying vec3 VTextureCoordSkybox;
 
 void main(void)
 {
-    gl_FragColor = textureCube(USamplerCube, VTextureCoordSkybox);
+    gl_FragColor = textureCube(UTexCubeEnv, VTextureCoordSkybox);
 }

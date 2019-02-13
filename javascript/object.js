@@ -688,3 +688,63 @@ class RenderObject
         }
     }
 }
+
+// Skybox Render Object with functionality for rendering to a texture,
+// to aid in the creation of a diffuse irradiance map.
+class RenderObjectSkybox extends RenderObject
+{
+    renderToIrradianceMap()
+    {
+        const MaterialSkybox = this.mesh.meshParts[0].material;
+
+        // Set the shader to that of the diffuse irradiance shader.
+        MaterialSkybox.shaderProgramObject = MaterialSkybox.shaderProgramObjectIrradiance;
+
+        // Create and bind a framebuffer to render to.
+        const frameBuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
+
+        // Generate the proper views for the shader to render to the irradiance cubemap.
+        const arrCubeLookAt =
+        [
+            [1.0, 0.0, 0.0],
+            [-1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, -1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, -1.0]
+        ];
+
+        const arrCubeLookUp =
+        [
+            [0.0, -1.0, 0.0],
+            [0.0, -1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, -1.0],
+            [0.0, -1.0, 0.0],
+            [0.0, -1.0, 0.0]
+        ];
+
+        const MatProj = GLMathLib.perspective(90.0, 1.0, 0.03, 1000.0);
+        for (let i = 0; i < 6; i++)
+        {
+            let MatIrradiance = GLMathLib.mat4(1.0);
+            let MatView = GLMathLib.lookAt(arrCubeLookAt[i], GLMathLib.vec3(0.0, 0.0, 0.0), arrCubeLookUp[i]); // "Eye" is just the center
+            MatIrradiance = GLMathLib.mult(MatView, MatIrradiance);
+            MatIrradiance = GLMathLib.mult(MatProj, MatIrradiance);
+            this.setUniformValue("UMatMVP", GLMathLib.flatten(MatIrradiance));
+
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, MaterialSkybox.irradianceTexture, 0);
+            gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            gl.viewport(0, 0, 64, 64);
+
+            this.render(); // Render it.
+        }
+
+        // Unbind the framebuffer (and implicitly rebind the canvas).
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        // Restore the skybox rendering shader.
+        MaterialSkybox.shaderProgramObject = MaterialSkybox.shaderProgramObjectSkybox;
+    }
+}

@@ -12,7 +12,8 @@ uniform mat4 UMatView;
 uniform mat4 UMatMV;
 uniform mat4 UMatNormal;
 
-uniform samplerCube USamplerCube;
+uniform samplerCube UTexCubeEnv;
+uniform samplerCube UTexCubeIrradiance;
 
 uniform sampler2D UTextureBaseColor;
 uniform sampler2D UTextureNormal;
@@ -28,6 +29,10 @@ varying vec2 VVertexTexCoord;
 
 varying vec3 VTanLightDir;
 varying vec3 VTanViewDir;
+
+// Gamma decode and correct functions
+highp vec4 gammaDecode(vec4 encoded) { return pow(encoded, vec4(2.2)); }
+highp vec4 gammaCorrect(vec4 linear) { return pow(linear, vec4(1.0 / 2.2)); }
 
 // Physically-based rendering functions
 
@@ -57,12 +62,15 @@ float GGX(vec3 n, vec3 m, float roughness)
     return num / denom;
 }
 
-// Bidirectional Reflectance Distribution Function
-vec3 BRDF(vec3 l, vec3 v, vec3 n, vec3 albedo, float metallic, float roughness)
+// Reflectance Equation - Outgoing Radiance function (Lo)
+vec3 RadianceOut(vec3 l, vec3 v, vec3 n, vec3 albedo, float metallic, float roughness)
 {
     roughness = clamp(roughness, 0.1, 1.0);
+
+    float NdotL = max(0.0, dot(n, l));
+
     // Specular Microfacet BRDF calculations
-    vec3 h = normalize(l + v);
+    vec3 h = normalize(l + v); // halfway vector
     vec3 F = SchlickApprox(h, l, albedo, metallic);
     float GDenom = SmithG2SpecBRDF(l, v, n, roughness);
     float D = GGX(n, h, roughness);
@@ -74,12 +82,10 @@ vec3 BRDF(vec3 l, vec3 v, vec3 n, vec3 albedo, float metallic, float roughness)
     // albedo to just black if fully metal.
     vec3 BRDFDiffuse = albedo / vec3(PI) * (1.0 - F);
 
-    return BRDFSpecular + BRDFDiffuse;
-}
+    vec3 DiffuseIrradiance = textureCube(UTexCubeIrradiance, VEnvMapN).rgb * BRDFDiffuse;
 
-// Gamma decode and correct functions
-highp vec4 gammaDecode(vec4 encoded) { return pow(encoded, vec4(2.2)); }
-highp vec4 gammaCorrect(vec4 linear) { return pow(linear, vec4(1.0 / 2.2)); }
+    return (BRDFDiffuse + BRDFSpecular) * NdotL + DiffuseIrradiance;
+}
 
 // Main entry point for pixel shader
 void main(void)
@@ -90,7 +96,7 @@ void main(void)
 
     // Add environment mapping.
     vec3 EnvMapR = reflect(VEnvMapI, VEnvMapN);
-    vec4 ColorEnvMap = textureCube(USamplerCube, EnvMapR);
+    vec4 ColorEnvMap = textureCube(UTexCubeEnv, EnvMapR);
 
     // Gamma uncorrect
     vec4 ColorBase = gammaDecode(texture2D(UTextureBaseColor, VVertexTexCoord));
@@ -103,9 +109,10 @@ void main(void)
     // Roughness = 1.0;
 
     vec4 Color = vec4(0.0);
-    Color.rgb = BRDF(VTanLightDir, VTanViewDir, TanNormalDir, ColorBase.rgb, Metallic, Roughness);
+    Color.rgb = RadianceOut(VTanLightDir, VTanViewDir, TanNormalDir, ColorBase.rgb, Metallic, Roughness);
     Color.rgb *= ColorDirLight;
-    Color.rgb *= max(0.0, dot(TanNormalDir, VTanLightDir));
+
+    Color = clamp(Color, 0.0, 1.0); // Clamp to RGB color range
 
     Color = gammaCorrect(Color); // gamma correct
     Color.a = 1.0;

@@ -32,7 +32,7 @@ catch (e)
 
 // Render object references
 var RenderObjectMesh;
-var RenderObjectSkybox;
+var RenderObjectMeshSkybox;
 
 // Lighting and shading properties.
 var LightPosition = GLMathLib.vec4(0.0, 10.0, 15.0, 0.0);
@@ -50,20 +50,18 @@ function init()
     // Initialize the canvas.
     setCanvas();
 
-    // Continue if WebGL works on the browser.
-    gl.clearColor(0.0, 0.0, 0.0, 1.0);                      // Set the canvas background to pure black.
-    gl.enable(gl.DEPTH_TEST);                               // Enable depth testing.
-    gl.depthFunc(gl.LEQUAL);                                // Make near things obscure far things.
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);    // Clear the color as well as the depth buffer.
-    gl.viewport(0, 0, canvas.width, canvas.height);         // Make the viewport adhere to the canvas size.
+    resetViewport();
 
     // Initialize the renderable objects.
 
     var materialSkybox = new MaterialSkybox(gl);
-    materialSkybox.setSkyboxTexture("Yokohama3");
     var MeshSkybox = Mesh.createCubeMap(500.0, materialSkybox);
-
-    RenderObjectSkybox = new RenderObject(gl, MeshSkybox);
+    RenderObjectMeshSkybox = new RenderObjectSkybox(gl, MeshSkybox);
+    materialSkybox.setSkyboxTexture("Yokohama3", () =>
+    {
+        RenderObjectMeshSkybox.renderToIrradianceMap();
+        resetViewport();
+    });
 
     // Sphere
     // var materialSphere = new MaterialPBR(gl);
@@ -124,7 +122,7 @@ function init()
     // Create the transformation matrix and calculate other matrices.
     MatModel = GLMathLib.mat4(1.0);
     MatView = GLMathLib.lookAt(Camera.at, Camera.eye, Camera.up);
-    MatProj = GLMathLib.perspective(Settings.yFOV, Settings.aspectRatio, Settings.nearClipPlane, Settings.farClipPlane);
+    MatProj = GLMathLib.perspective(Settings.yFOV, window.innerWidth / window.innerHeight, Settings.nearClipPlane, Settings.farClipPlane);
     MatMV = GLMathLib.mult(MatView, MatModel);
     MatNormal = GLMathLib.transpose(GLMathLib.inverse(MatMV));
 
@@ -185,10 +183,10 @@ function render()
     var MatSkybox = GLMathLib.mat4(1.0);
     MatSkybox = GLMathLib.mult(MatViewSkybox, MatSkybox);
     MatSkybox = GLMathLib.mult(MatProj, MatSkybox);
-    RenderObjectSkybox.setUniformValue("UMatMVP", GLMathLib.flatten(MatSkybox));
+    RenderObjectMeshSkybox.setUniformValue("UMatMVP", GLMathLib.flatten(MatSkybox));
 
     // Render.
-    RenderObjectSkybox.render();
+    RenderObjectMeshSkybox.render();
 
     gl.depthMask(true);
     gl.enable(gl.DEPTH_TEST);
@@ -250,18 +248,16 @@ window.onload = () =>
 // Initialize separate settings for the canvas.
 function setCanvas()
 {
-    var innerAspectRatio = window.innerWidth / window.innerHeight;
-    var canvasWidth, canvasHeight;
-    if (innerAspectRatio > Settings.aspectRatio)
-    {
-        canvasHeight = window.innerHeight;
-        canvasWidth = canvasHeight * Settings.aspectRatio;
-    }
-    else
-    {
-        canvasWidth = window.innerWidth;
-        canvasHeight = canvasWidth * 1.0 / Settings.aspectRatio;
-    }
-    canvas.setAttribute("width", String(canvasWidth));
-    canvas.setAttribute("height", String(canvasHeight));
+    canvas.setAttribute("width", String(window.innerWidth));
+    canvas.setAttribute("height", String(window.innerHeight));
+    MatProj = GLMathLib.perspective(Settings.yFOV, window.innerWidth / window.innerHeight, Settings.nearClipPlane, Settings.farClipPlane);
+}
+
+function resetViewport()
+{
+    gl.clearColor(0.0, 0.0, 0.0, 1.0);                      // Set the canvas background to pure black.
+    gl.enable(gl.DEPTH_TEST);                               // Enable depth testing.
+    gl.depthFunc(gl.LEQUAL);                                // Make near things obscure far things.
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);    // Clear the color as well as the depth buffer.
+    gl.viewport(0, 0, canvas.width, canvas.height);         // Make the viewport adhere to the canvas size.
 }
