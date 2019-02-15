@@ -39,17 +39,21 @@ highp vec4 gammaCorrect(vec4 linear) { return pow(linear, vec4(1.0 / 2.2)); }
 // Schlick Approximation (of Fresnel Reflectance) (F function),
 // with additional parameterization based on metallic such that F0
 // is 0.04 for metallic at 0. 
-vec3 SchlickApprox(vec3 n, vec3 l, vec3 albedo, float metallic)
+vec3 SchlickApprox(vec3 n, vec3 l, vec3 F0)
 {
-    vec3 F0 = mix(vec3(0.04), albedo, metallic); // specular color
     return F0 + (1.0 - F0) * pow(1.0 - max(0.0, dot(n, l)), 5.0);
 }
 
 // Combined G2 Smith height-correlated masking-shadowing function and
-// specular microfacet BRDF denominator (G function)
+// specular microfacet BRDF denominator (G function). Note that the G
+// function is dependent on the D function (where GGX is used), and that
+// this function is optimized with the use of D GGX in mind.
 float SmithG2SpecBRDF(vec3 l, vec3 v, vec3 n, float roughness)
 {
-    return 0.5 / mix(2.0 * abs(dot(n, l)) * abs(dot(n, v)), abs(dot(n, l)) + abs(dot(n, v)), roughness * roughness);
+    float NdotL = abs(dot(n, l));
+    float NdotV = abs(dot(n, v));
+    float a = roughness * roughness;
+    return 0.5 / mix(2.0 * NdotL * NdotV, NdotL + NdotV, a);
 }
 
 // GGX (Trowbridge & Reitz) Distribution (D function)
@@ -71,20 +75,22 @@ vec3 RadianceOut(vec3 l, vec3 v, vec3 n, vec3 albedo, float metallic, float roug
 
     // Specular Microfacet BRDF calculations
     vec3 h = normalize(l + v); // halfway vector
-    vec3 F = SchlickApprox(h, l, albedo, metallic);
+    vec3 F0 = mix(vec3(0.04), albedo, metallic); // specular color
+
+    vec3 F = SchlickApprox(h, l, F0);
     float GDenom = SmithG2SpecBRDF(l, v, n, roughness);
     float D = GGX(n, h, roughness);
 
     // Specular BRDF
-    vec3 BRDFSpecular = F * GDenom * D;
+    vec3 BRDFSpecular = F * GDenom * D / PI;
 
     // Diffuse Lambertian BRDF, with additional parameterization that sets the
     // albedo to just black if fully metal.
-    vec3 BRDFDiffuse = albedo / vec3(PI) * (1.0 - F);
+    vec3 BRDFDiffuse = albedo / PI * (1.0 - F);
 
     vec3 DiffuseIrradiance = textureCube(UTexCubeIrradiance, VEnvMapN).rgb * BRDFDiffuse;
 
-    return (BRDFDiffuse + BRDFSpecular) * NdotL + DiffuseIrradiance;
+    return PI * (BRDFDiffuse + BRDFSpecular) * NdotL + DiffuseIrradiance;
 }
 
 // Main entry point for pixel shader
