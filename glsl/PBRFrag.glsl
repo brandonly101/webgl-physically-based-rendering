@@ -1,3 +1,5 @@
+#version 300 es
+
 // Copyright 2015 Brandon Ly all rights reserved.
 //
 // Fragment shader.
@@ -5,6 +7,8 @@
 precision highp float;
 
 const float PI = 3.1415927;
+const float ENV_MIP_LEVELS = 10.0;
+const float ENV_MIP_MAX = ENV_MIP_LEVELS - 1.0;
 
 // Uniforms
 uniform mat4 UMatModel;
@@ -14,6 +18,8 @@ uniform mat4 UMatNormal;
 
 uniform samplerCube UTexCubeEnv;
 uniform samplerCube UTexCubeIrradiance;
+uniform samplerCube UTexCubeSpecIBL;
+uniform sampler2D UTextureEnvBRDF;
 
 uniform sampler2D UTextureBaseColor;
 uniform sampler2D UTextureNormal;
@@ -21,14 +27,18 @@ uniform sampler2D UTextureMetallic;
 uniform sampler2D UTextureRoughness;
 
 // Variables passed from vert to pixel
-varying vec3 VEnvMapI;
-varying vec3 VEnvMapN;
+in vec3 VEnvMapI;
+in vec3 VEnvMapN;
 
-varying vec3 VTextureCoordSkybox;
-varying vec2 VVertexTexCoord;
+in vec3 VTextureCoordSkybox;
+in vec2 VVertexTexCoord;
 
-varying vec3 VTanLightDir;
-varying vec3 VTanViewDir;
+in vec3 VTanLightDir;
+in vec3 VTanViewDir;
+
+in mat3 VTBN;
+
+out vec4 Color;
 
 // Gamma decode and correct functions
 highp vec4 gammaDecode(vec4 encoded) { return pow(encoded, vec4(2.2)); }
@@ -36,18 +46,19 @@ highp vec4 gammaCorrect(vec4 linear) { return pow(linear, vec4(1.0 / 2.2)); }
 
 // Physically-based rendering functions
 
-// Schlick Approximation (of Fresnel Reflectance) (F function),
-// with additional parameterization based on metallic such that F0
-// is 0.04 for metallic at 0. 
+// Schlick's Approximation (of Fresnel Reflectance) (F function).
+//
 vec3 SchlickApprox(vec3 n, vec3 l, vec3 F0)
 {
     return F0 + (1.0 - F0) * pow(1.0 - max(0.0, dot(n, l)), 5.0);
 }
 
 // Combined G2 Smith height-correlated masking-shadowing function and
-// specular microfacet BRDF denominator (G function). Note that the G
-// function is dependent on the D function (where GGX is used), and that
-// this function is optimized with the use of D GGX in mind.
+// specular microfacet BRDF denominator (G function) (denom is
+// 4 * NdotL * NdotV). Note that the G function is dependent on the
+// D function (where GGX is used), and that this function is optimized
+// with the use of D GGX in mind.
+//
 float SmithG2SpecBRDF(vec3 l, vec3 v, vec3 n, float roughness)
 {
     float NdotL = abs(dot(n, l));
@@ -69,59 +80,61 @@ float GGX(vec3 n, vec3 m, float roughness)
 // Reflectance Equation - Outgoing Radiance function (Lo)
 vec3 RadianceOut(vec3 l, vec3 v, vec3 n, vec3 albedo, float metallic, float roughness)
 {
-    roughness = clamp(roughness, 0.1, 1.0);
+    // Clamp roughness to close to 0 to avoid specular anomolies
+    roughness = clamp(roughness, 0.05, 1.0);
 
-    float NdotL = max(0.0, dot(n, l));
-
-    // Specular Microfacet BRDF calculations
+    // Microfacet BRDF calculations
     vec3 h = normalize(l + v); // halfway vector
     vec3 F0 = mix(vec3(0.04), albedo, metallic); // specular color
-
+    albedo *= (1.0 - metallic); // the more metallic a material is, the less albedo is factored.
     vec3 F = SchlickApprox(h, l, F0);
     float GDenom = SmithG2SpecBRDF(l, v, n, roughness);
     float D = GGX(n, h, roughness);
 
     // Specular BRDF
-    vec3 BRDFSpecular = F * GDenom * D / PI;
+    vec3 BRDFSpecular = F * GDenom * D;
 
-    // Diffuse Lambertian BRDF, with additional parameterization that sets the
-    // albedo to just black if fully metal.
-    vec3 BRDFDiffuse = albedo / PI * (1.0 - F);
+    // Diffuse Lambertian BRDF
+    vec3 BRDFDiffuse = albedo / PI * (1.0 - F); // 1 - F is diffuse contribution
 
-    vec3 DiffuseIrradiance = textureCube(UTexCubeIrradiance, VEnvMapN).rgb * BRDFDiffuse;
+    // Grab a world-space vector for environment map lookups.
+    vec3 worldN = normalize(VTBN * n);
 
-    return PI * (BRDFDiffuse + BRDFSpecular) * NdotL + DiffuseIrradiance;
+    // Diffuse irradiance. By multiplying it by the diffuse BRDF (with an included
+    // 1 / PI term), we turn it back into radiance.
+    vec3 DiffuseIrradiance = texture(UTexCubeIrradiance, worldN).rgb * BRDFDiffuse;
+
+    // Specular Image-based Lighting
+    vec3 R = reflect(VEnvMapI, worldN);
+    vec3 prefilterColor = textureLod(UTexCubeSpecIBL, R, roughness * ENV_MIP_MAX).rgb;
+    vec2 envBRDF = texture(UTextureEnvBRDF, vec2(max(dot(n, v), 0.0), roughness)).rg;
+    vec3 SpecularIBL = prefilterColor * (F0 * envBRDF.r + envBRDF.g);
+
+    float NdotL = clamp(dot(n, l), 0.0, 1.0);
+    return PI * (BRDFDiffuse + BRDFSpecular) * NdotL + DiffuseIrradiance + SpecularIBL;
 }
 
 // Main entry point for pixel shader
 void main(void)
 {
-    // Normal map
-    vec3 normalMap = texture2D(UTextureNormal, VVertexTexCoord).rgb;
-    vec3 TanNormalDir = normalize(normalMap * 2.0 - 1.0);
-
-    // Add environment mapping.
-    vec3 EnvMapR = reflect(VEnvMapI, VEnvMapN);
-    vec4 ColorEnvMap = textureCube(UTexCubeEnv, EnvMapR);
-
-    // Gamma uncorrect
-    vec4 ColorBase = gammaDecode(texture2D(UTextureBaseColor, VVertexTexCoord));
+    vec3 normalMap = texture(UTextureNormal, VVertexTexCoord).rgb; // Normal map
+    vec3 TanNormalDir = normalize(normalMap * 2.0 - 1.0); // Shift range of normal map
+    vec4 ColorBase = gammaDecode(texture(UTextureBaseColor, VVertexTexCoord)); // Gamma uncorrect
+    float Metallic = texture(UTextureMetallic, VVertexTexCoord).r;
+    float Roughness = texture(UTextureRoughness, VVertexTexCoord).r;
 
     vec3 ColorDirLight = vec3(1.0);
-    float Metallic = texture2D(UTextureMetallic, VVertexTexCoord).r;
-    float Roughness = texture2D(UTextureRoughness, VVertexTexCoord).r;
 
-    // Metallic = 0.0;
-    // Roughness = 1.0;
+    vec3 L = normalize(VTanLightDir);
+    vec3 V = normalize(VTanViewDir);
+    vec3 N = normalize(TanNormalDir);
 
-    vec4 Color = vec4(0.0);
-    Color.rgb = RadianceOut(VTanLightDir, VTanViewDir, TanNormalDir, ColorBase.rgb, Metallic, Roughness);
+    Color = vec4(0.0);
+    Color.rgb = RadianceOut(L, V, N, ColorBase.rgb, Metallic, Roughness);
     Color.rgb *= ColorDirLight;
 
     Color = clamp(Color, 0.0, 1.0); // Clamp to RGB color range
 
     Color = gammaCorrect(Color); // gamma correct
     Color.a = 1.0;
-
-    gl_FragColor = Color;
 }

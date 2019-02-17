@@ -40,6 +40,8 @@ var LightDirectDir = GLMathLib.vec3(0.35, 1.0, 1.0);
 
 var MatModel, MatView, MatProj, MatMV, MatMVP, MatNormal;
 
+const ENV_MIP_LEVELS = 10;
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Main init and render loops.
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,9 +59,10 @@ function init()
     var materialSkybox = new MaterialSkybox(gl);
     var MeshSkybox = Mesh.createCubeMap(500.0, materialSkybox);
     RenderObjectMeshSkybox = new RenderObjectSkybox(gl, MeshSkybox);
-    materialSkybox.setSkyboxTexture("Yokohama3", () =>
+    materialSkybox.setSkyboxTexture("Yokohama3", ENV_MIP_LEVELS, () =>
     {
         RenderObjectMeshSkybox.renderToIrradianceMap();
+        RenderObjectMeshSkybox.renderToSpecIBLMap();
         resetViewport();
     });
 
@@ -130,25 +133,6 @@ function init()
 
     Control.init();
     Control.setMouseSensitivity(3.5);
-
-    // Add an event listener to the input box.
-    // document.getElementById("obj-upload").addEventListener("change", function(e)
-    // {
-    //     var file = e.target.files[0];
-    //     if (!file)
-    //     {
-    //         return;
-    //     }
-    //     var reader = new FileReader();
-    //     reader.onload = function(e)
-    //     {
-    //         var contents = e.target.result;
-    //         meshRenderer = Mesh.createMesh(contents);
-    //         Buffer.mesh = createMeshBuffer(meshRender.vertices, meshRender.normals, meshRender.indices);
-    //     };
-    //     reader.readAsText(file);
-    //     Buffer.mesh = createMeshBuffer(meshRender.vertices, meshRender.normals, meshRender.indices);
-    // }, false);
 }
 
 // Render loop.

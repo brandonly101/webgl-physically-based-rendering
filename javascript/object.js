@@ -747,4 +747,82 @@ class RenderObjectSkybox extends RenderObject
         // Restore the skybox rendering shader.
         MaterialSkybox.shaderProgramObject = MaterialSkybox.shaderProgramObjectSkybox;
     }
+
+    renderToSpecIBLMap()
+    {
+        const MaterialSkybox = this.mesh.meshParts[0].material;
+
+        // Set the shader to that of the diffuse irradiance shader.
+        MaterialSkybox.shaderProgramObject = MaterialSkybox.shaderProgramObjectIBL;
+
+        // Create and bind a framebuffer to render to.
+        const frameBuffer = gl.createFramebuffer();
+        gl.bindFramebuffer(gl.FRAMEBUFFER, frameBuffer);
+
+        // Generate the proper views for the shader to render to the irradiance cubemap.
+        const arrCubeLookAt =
+        [
+            [1.0, 0.0, 0.0],
+            [-1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, -1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, -1.0]
+        ];
+
+        const arrCubeLookUp =
+        [
+            [0.0, -1.0, 0.0],
+            [0.0, -1.0, 0.0],
+            [0.0, 0.0, 1.0],
+            [0.0, 0.0, -1.0],
+            [0.0, -1.0, 0.0],
+            [0.0, -1.0, 0.0]
+        ];
+
+        const mipLevels = MaterialSkybox.mipLevels;
+        const SKYBOX_MIP_LEVELS_MIN = 0;
+        const MatProj = GLMathLib.perspective(90.0, 1.0, 0.03, 1000.0);
+
+        // Create prefiltered environment map and draw it to the framebuffer to
+        // draw it to the cubemap sides.
+        this.setUniformValue("UIntegrateSpecBRDF", 0);
+
+        for (let mip = 0; mip < mipLevels; mip++)
+        {
+            if (mip == (mipLevels - SKYBOX_MIP_LEVELS_MIN)) break;
+            const texWidth = Math.pow(2, mipLevels - 1 - mip);
+
+            gl.viewport(0, 0, texWidth, texWidth);
+
+            this.setUniformValue("URoughness", mip / (mipLevels - 1 - SKYBOX_MIP_LEVELS_MIN))
+            for (let i = 0; i < 6; i++)
+            {
+                let MatSpecIBL = GLMathLib.mat4(1.0);
+                let MatView = GLMathLib.lookAt(arrCubeLookAt[i], GLMathLib.vec3(0.0, 0.0, 0.0), arrCubeLookUp[i]); // "Eye" is just the center
+                MatSpecIBL = GLMathLib.mult(MatView, MatSpecIBL);
+                MatSpecIBL = GLMathLib.mult(MatProj, MatSpecIBL);
+                this.setUniformValue("UMatMVP", GLMathLib.flatten(MatSpecIBL));
+
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_CUBE_MAP_POSITIVE_X + i, MaterialSkybox.specIBLEnvMapTexture, mip);
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+                this.render(); // Render it.
+            }
+        }
+
+        // Integrate environment BRDF and render it to a 2D lookup texture to use.
+        this.setUniformValue("UIntegrateSpecBRDF", 1);
+        gl.viewport(0, 0, 512, 512);
+        gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, MaterialSkybox.envBRDFLookup, 0);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+        this.render(); // Render it.
+
+        // Unbind the framebuffer (and implicitly rebind the canvas).
+        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        // Restore the skybox rendering shader.
+        MaterialSkybox.shaderProgramObject = MaterialSkybox.shaderProgramObjectSkybox;
+    }
 }
