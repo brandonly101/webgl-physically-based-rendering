@@ -214,12 +214,14 @@ class MaterialSkybox
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 512, 512, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
 
         this.mipLevels = 0;
+        this.mipLevelsMin = 0;
         this.numLoadedFaces = 0;
     }
 
-    setSkyboxTexture(src, mipLevels, loadedFacesCallback = null)
+    setSkyboxTexture(src, mipLevels, mipLevelsMin, loadedFacesCallback = null)
     {
         this.mipLevels = mipLevels;
+        this.mipLevelsMin = mipLevelsMin;
         this.numLoadedFaces = 0;
 
         const gl = this.gl;
@@ -321,7 +323,8 @@ class MaterialPBR
                 "UTextureEnvBRDF" : "sampler2D",
                 "UMatViewInv" : "mat4",
                 "UMatCameraRot" : "mat4",
-                "URoughness" : "float",
+                "UEnvMipLevels" : "float",
+                "UEnvMipLevelsMin" : "float",
 
                 // PBR-specific Uniforms
                 "UTextureBaseColor" : "sampler2D",

@@ -41,6 +41,7 @@ var LightDirectDir = GLMathLib.vec3(0.35, 1.0, 1.0);
 var MatModel, MatView, MatProj, MatMV, MatMVP, MatNormal;
 
 const ENV_MIP_LEVELS = 10;
+const ENV_MIP_LEVELS_MIN = 5;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Main init and render loops.
@@ -59,7 +60,7 @@ function init()
     var materialSkybox = new MaterialSkybox(gl);
     var MeshSkybox = Mesh.createCubeMap(500.0, materialSkybox);
     RenderObjectMeshSkybox = new RenderObjectSkybox(gl, MeshSkybox);
-    materialSkybox.setSkyboxTexture("Yokohama3", ENV_MIP_LEVELS, () =>
+    materialSkybox.setSkyboxTexture("Yokohama3", ENV_MIP_LEVELS, ENV_MIP_LEVELS_MIN, () =>
     {
         RenderObjectMeshSkybox.renderToIrradianceMap();
         RenderObjectMeshSkybox.renderToSpecIBLMap();
@@ -200,6 +201,9 @@ function render()
 
     MatMesh = GLMathLib.mult(MatProj, MatMesh);
     RenderObjectMesh.setUniformValue("UMatMVP", GLMathLib.flatten(MatMesh));
+
+    RenderObjectMesh.setUniformValue("UEnvMipLevels", ENV_MIP_LEVELS);
+    RenderObjectMesh.setUniformValue("UEnvMipLevelsMin", ENV_MIP_LEVELS_MIN);
 
     // Render.
     RenderObjectMesh.render();

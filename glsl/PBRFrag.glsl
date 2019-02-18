@@ -7,8 +7,6 @@
 precision highp float;
 
 const float PI = 3.1415927;
-const float ENV_MIP_LEVELS = 10.0;
-const float ENV_MIP_MAX = ENV_MIP_LEVELS - 1.0;
 
 // Uniforms
 uniform mat4 UMatModel;
@@ -25,6 +23,9 @@ uniform sampler2D UTextureBaseColor;
 uniform sampler2D UTextureNormal;
 uniform sampler2D UTextureMetallic;
 uniform sampler2D UTextureRoughness;
+
+uniform float UEnvMipLevels;
+uniform float UEnvMipLevelsMin;
 
 // Variables passed from vert to pixel
 in vec3 VEnvMapI;
@@ -50,7 +51,15 @@ highp vec4 gammaCorrect(vec4 linear) { return pow(linear, vec4(1.0 / 2.2)); }
 //
 vec3 SchlickApprox(vec3 n, vec3 l, vec3 F0)
 {
+    // More intuitively, lerp(F0, <white>, 1.0 - pow(dot(n, l), 5.0))
     return F0 + (1.0 - F0) * pow(1.0 - max(0.0, dot(n, l)), 5.0);
+}
+
+// Schlick's Approximation w/ parameterization for roughness. For use specifically
+// with diffuse irradiance.
+vec3 SchlickApproxRoughness(vec3 n, vec3 l, vec3 F0, float roughness)
+{
+    return F0 + (max(vec3(1.0 - roughness), F0) - F0) * pow(1.0 - max(0.0, dot(n, l)), 5.0);
 }
 
 // Combined G2 Smith height-correlated masking-shadowing function and
@@ -102,11 +111,14 @@ vec3 RadianceOut(vec3 l, vec3 v, vec3 n, vec3 albedo, float metallic, float roug
 
     // Diffuse irradiance. By multiplying it by the diffuse BRDF (with an included
     // 1 / PI term), we turn it back into radiance.
-    vec3 DiffuseIrradiance = texture(UTexCubeIrradiance, worldN).rgb * BRDFDiffuse;
+    vec3 FEnv = SchlickApproxRoughness(n, v, F0, roughness);
+    vec3 BRDFDiffuseEnv = albedo / PI * (1.0 - FEnv);
+    vec3 DiffuseIrradiance = texture(UTexCubeIrradiance, worldN).rgb * BRDFDiffuseEnv;
 
     // Specular Image-based Lighting
     vec3 R = reflect(VEnvMapI, worldN);
-    vec3 prefilterColor = textureLod(UTexCubeSpecIBL, R, roughness * ENV_MIP_MAX).rgb;
+    float envMipMax = UEnvMipLevels - 1.0 - UEnvMipLevelsMin;
+    vec3 prefilterColor = textureLod(UTexCubeSpecIBL, R, roughness * envMipMax).rgb;
     vec2 envBRDF = texture(UTextureEnvBRDF, vec2(max(dot(n, v), 0.0), roughness)).rg;
     vec3 SpecularIBL = prefilterColor * (F0 * envBRDF.r + envBRDF.g);
 

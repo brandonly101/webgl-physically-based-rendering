@@ -781,7 +781,7 @@ class RenderObjectSkybox extends RenderObject
         ];
 
         const mipLevels = MaterialSkybox.mipLevels;
-        const SKYBOX_MIP_LEVELS_MIN = 0;
+        const mipLevelsMin = MaterialSkybox.mipLevelsMin;
         const MatProj = GLMathLib.perspective(90.0, 1.0, 0.03, 1000.0);
 
         // Create prefiltered environment map and draw it to the framebuffer to
@@ -790,12 +790,12 @@ class RenderObjectSkybox extends RenderObject
 
         for (let mip = 0; mip < mipLevels; mip++)
         {
-            if (mip == (mipLevels - SKYBOX_MIP_LEVELS_MIN)) break;
+            if (mip == (mipLevels - mipLevelsMin)) break;
             const texWidth = Math.pow(2, mipLevels - 1 - mip);
 
             gl.viewport(0, 0, texWidth, texWidth);
 
-            this.setUniformValue("URoughness", mip / (mipLevels - 1 - SKYBOX_MIP_LEVELS_MIN))
+            this.setUniformValue("URoughness", mip / (mipLevels - 1 - mipLevelsMin))
             for (let i = 0; i < 6; i++)
             {
                 let MatSpecIBL = GLMathLib.mat4(1.0);
