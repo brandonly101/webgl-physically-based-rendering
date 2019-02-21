@@ -2,13 +2,14 @@ Copyright Brandon Ly 2019 all rights reserved.
 
 Run this renderer at https://brandonly101.github.io/webgl-physically-based-rendering
 
-This is a work-in-progress personal project that implements physically-based rendering in WebGL.
+This is a personal project that implements physically-based rendering in WebGL.
 
 It has the following features:
 
+* Physically-based shading model
+* Diffuse Irradiance
+* Specular Image-based Lighting
 * Custom 3D Math Library
-* Blinn-phong Shading Model
-* Environment Mapping
-* OBJ Model Loading
-* Mini-Shader and Material System
 * Normal Mapping
+* Mini-Shader and Material System
+* OBJ Model Loading
