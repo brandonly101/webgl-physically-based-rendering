@@ -20,10 +20,12 @@ Control.var =
 
 Control.init = function()
 {
-    document.addEventListener("mousedown", this.onDocumentMouseDown);
-    document.addEventListener("mouseup", this.onDocumentMouseUp);
-    document.addEventListener("mousemove", this.onDocumentMouseMove);
-    document.addEventListener("wheel", this.onDocumentMouseScroll);
+    const canvasElement = document.getElementById("webgl-canvas");
+
+    canvasElement.addEventListener("mousedown", this.onDocumentMouseDown);
+    canvasElement.addEventListener("mouseup", this.onDocumentMouseUp);
+    canvasElement.addEventListener("mousemove", this.onDocumentMouseMove);
+    canvasElement.addEventListener("wheel", this.onDocumentMouseScroll);
 };
 
 Control.onDocumentMouseDown = function(e)

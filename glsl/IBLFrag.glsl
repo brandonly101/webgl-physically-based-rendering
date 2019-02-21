@@ -24,7 +24,7 @@ highp vec4 gammaCorrect(vec4 linear) { return pow(linear, vec4(1.0 / 2.2)); }
 // Constants
 const float PI = 3.1415927;
 
-const int NUM_SAMPLES = 1024;
+const int NUM_SAMPLES = 512;
 
 // Hammersley functions
 

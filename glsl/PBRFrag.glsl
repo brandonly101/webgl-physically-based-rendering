@@ -27,10 +27,13 @@ uniform sampler2D UTextureRoughness;
 uniform float UEnvMipLevels;
 uniform float UEnvMipLevelsMin;
 
-// Variables passed from vert to pixel
-in vec3 VEnvMapI;
-in vec3 VEnvMapN;
+uniform int UOverride;
+uniform int UUseWorldSpace;
+uniform vec3 UColor;
+uniform float UMetallic;
+uniform float URoughness;
 
+// Variables passed from vert to pixel
 in vec3 VTextureCoordSkybox;
 in vec2 VVertexTexCoord;
 
@@ -38,6 +41,11 @@ in vec3 VTanLightDir;
 in vec3 VTanViewDir;
 
 in mat3 VTBN;
+
+in vec3 VWorldN;
+in vec3 VWorldV;
+in vec3 VWorldL;
+in vec3 VWorldI;
 
 out vec4 Color;
 
@@ -87,7 +95,7 @@ float GGX(vec3 n, vec3 m, float roughness)
 }
 
 // Reflectance Equation - Outgoing Radiance function (Lo)
-vec3 RadianceOut(vec3 l, vec3 v, vec3 n, vec3 albedo, float metallic, float roughness)
+vec3 RadianceOut(vec3 l, vec3 v, vec3 n, vec3 worldI, vec3 worldN, vec3 albedo, float metallic, float roughness)
 {
     // Clamp roughness to close to 0 to avoid specular anomolies
     roughness = clamp(roughness, 0.05, 1.0);
@@ -106,9 +114,6 @@ vec3 RadianceOut(vec3 l, vec3 v, vec3 n, vec3 albedo, float metallic, float roug
     // Diffuse Lambertian BRDF
     vec3 BRDFDiffuse = albedo / PI * (1.0 - F); // 1 - F is diffuse contribution
 
-    // Grab a world-space vector for environment map lookups.
-    vec3 worldN = normalize(VTBN * n);
-
     // Diffuse irradiance. By multiplying it by the diffuse BRDF (with an included
     // 1 / PI term), we turn it back into radiance.
     vec3 FEnv = SchlickApproxRoughness(n, v, F0, roughness);
@@ -116,7 +121,7 @@ vec3 RadianceOut(vec3 l, vec3 v, vec3 n, vec3 albedo, float metallic, float roug
     vec3 DiffuseIrradiance = texture(UTexCubeIrradiance, worldN).rgb * BRDFDiffuseEnv;
 
     // Specular Image-based Lighting
-    vec3 R = reflect(VEnvMapI, worldN);
+    vec3 R = reflect(worldI, worldN);
     float envMipMax = UEnvMipLevels - 1.0 - UEnvMipLevelsMin;
     vec3 prefilterColor = textureLod(UTexCubeSpecIBL, R, roughness * envMipMax).rgb;
     vec2 envBRDF = texture(UTextureEnvBRDF, vec2(max(dot(n, v), 0.0), roughness)).rg;
@@ -132,21 +137,38 @@ void main(void)
     vec3 normalMap = texture(UTextureNormal, VVertexTexCoord).rgb; // Normal map
     vec3 TanNormalDir = normalize(normalMap * 2.0 - 1.0); // Shift range of normal map
     vec4 ColorBase = gammaDecode(texture(UTextureBaseColor, VVertexTexCoord)); // Gamma uncorrect
-    float Metallic = texture(UTextureMetallic, VVertexTexCoord).r;
-    float Roughness = texture(UTextureRoughness, VVertexTexCoord).r;
+    float Metallic = texture(UTextureMetallic, VVertexTexCoord).r; // Only need to grab one channel
+    float Roughness = texture(UTextureRoughness, VVertexTexCoord).g; // Also only need to grab one channel
 
-    vec3 ColorDirLight = vec3(1.0);
+    // vec3 ColorDirLight = vec3(1.0); // TODO: Add parameterization for affecting the directional light
 
+    // Determine the light, view, and normal vectors and PBR parameters
     vec3 L = normalize(VTanLightDir);
     vec3 V = normalize(VTanViewDir);
     vec3 N = normalize(TanNormalDir);
+    vec3 WorldN = normalize(VTBN * N); // Grab a world-space vector for environment map lookups.
+    if (UUseWorldSpace == 1) // For some models (i.e. sphere), easier to use world space coordinates
+    {
+        L = normalize(VWorldL);
+        V = normalize(VWorldV);
+        N = normalize(VWorldN);
+        WorldN = N;
+    }
+    ColorBase.rgb *= UColor;
+    if (UOverride == 1)
+    {
+        Metallic = UMetallic;
+        Roughness = URoughness;
+    }
 
+    // Set the final pixel color
     Color = vec4(0.0);
-    Color.rgb = RadianceOut(L, V, N, ColorBase.rgb, Metallic, Roughness);
-    Color.rgb *= ColorDirLight;
+    Color.rgb = RadianceOut(L, V, N, VWorldI, WorldN, ColorBase.rgb, Metallic, Roughness);
+    // Color.rgb *= ColorDirLight; // TODO: Add parameterization for affecting the directional light
 
     Color = clamp(Color, 0.0, 1.0); // Clamp to RGB color range
 
     Color = gammaCorrect(Color); // gamma correct
+    // Color.rgb = vec3(Metallic);
     Color.a = 1.0;
 }

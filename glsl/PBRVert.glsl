@@ -14,7 +14,7 @@ in vec3 AVertexNormal;
 in vec4 AVertexTangent;
 
 // Uniforms
-uniform vec4 ULightPosition;
+uniform vec4 ULightDirectPos;
 uniform vec3 ULightDirectDir;
 uniform vec4 UCamPosition;
 
@@ -26,8 +26,6 @@ uniform mat4 UMatMVP;
 uniform mat4 UMatNormal;
 
 // Variables passed from vert to pixel
-out vec3 VEnvMapI;
-out vec3 VEnvMapN;
 
 out vec3 VTextureCoordSkybox;
 out vec2 VVertexTexCoord;
@@ -36,6 +34,11 @@ out vec3 VTanLightDir;
 out vec3 VTanViewDir;
 
 out mat3 VTBN;
+
+out vec3 VWorldN;
+out vec3 VWorldV;
+out vec3 VWorldL;
+out vec3 VWorldI;
 
 void main(void)
 {
@@ -52,17 +55,18 @@ void main(void)
     mat3 invTBN = transpose(VTBN);
 
     // Calculate the light dir and cam dir (in tangent space) to pass into the pixel shader.
-    vec3 TanLightPos = invTBN * vec3(ULightPosition);
+    vec3 TanLightDirectPos = invTBN * vec3(ULightDirectPos);
     vec3 TanViewPos = invTBN * vec3(UCamPosition);
     vec3 TanVertPos = invTBN * vec3(PosWorldSpace);
 
-    // VTanLightDir = normalize(TanLightPos - TanVertPos);
-    VTanLightDir = normalize(invTBN * ULightDirectDir); // Directional Light
+    VTanLightDir = normalize(TanLightDirectPos);
+    // VTanLightDir = normalize(invTBN * ULightDirectDir); // Directional Light
     VTanViewDir = normalize(TanViewPos - TanVertPos);
 
-    // Calculate environment mapping variables.
-    VEnvMapI = normalize(PosWorldSpace - UCamPosition.xyz);
-    VEnvMapN = N;
+    VWorldN = N;
+    VWorldV = normalize(vec3(UCamPosition) - PosWorldSpace);
+    VWorldL = normalize(vec3(ULightDirectPos));
+    VWorldI = normalize(PosWorldSpace - UCamPosition.xyz);
 
     VVertexTexCoord = AVertexTexCoord;
 
