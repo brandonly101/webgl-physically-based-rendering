@@ -37,6 +37,8 @@ var RenderObjectCore = null;
 var RenderObjectSphere = null;
 var RenderObjectMedievalHelmet = null;
 var RenderObjectChair = null;
+var RenderObjectCabinet = null;
+var RenderObjectDamagedHelmet = null;
 
 var RenderObjectMeshSkybox;
 
@@ -53,7 +55,7 @@ class DatGuiParameters
     constructor()
     {
         this.Skybox = [ 'Shiodome Stairs', 'Modern Buildings', 'Schadowplatz', 'Spruit Sunrise', 'Whipple Creek' ];
-        this.Model = [ 'Medieval Helmet', 'ARC Pulse Core', 'Eames Lounge Chair', 'Sphere' ];
+        this.Model = [ 'Sci-fi Helmet', 'ARC Pulse Core', 'Medieval Helmet', 'Old Cabinet', 'Eames Lounge Chair', 'Sphere' ];
         this.OverridePBR = false;
         this.Color = [255, 255, 255];
         this.Metallic = 0.0;
@@ -85,7 +87,7 @@ function init()
     loadSkybox("ShiodomeStairs");
     RenderObjectMeshSkybox = ROSkyboxes["ShiodomeStairs"];
 
-    loadMeshMedievalHelmet();
+    loadMeshDamagedHelmet();
 
     // Sphere
     var materialSphere = new MaterialPBR(gl);
@@ -94,7 +96,7 @@ function init()
     RenderObjectSphere.setUniformValue("UUseWorldSpace", 1);
 
     // Set the default loaded model
-    RenderObjectMesh = RenderObjectMedievalHelmet;
+    RenderObjectMesh = RenderObjectDamagedHelmet;
 
     // Create the transformation matrix and calculate other matrices.
     MatModel = GLMathLib.mat4(1.0);
@@ -121,7 +123,7 @@ function render()
     MatView = GLMathLib.mat4(1.0);
     MatView = GLMathLib.rotate(MatView, Control.var.angleX/Control.var.mouseSensitivity, GLMathLib.vec3(0, 1, 0));
     MatView = GLMathLib.rotate(MatView, Control.var.angleY/Control.var.mouseSensitivity, GLMathLib.vec3(1, 0, 0));
-    MatView = GLMathLib.translate(MatView, GLMathLib.vec3(0, 0, Control.var.mouseScroll/Control.var.mouseSensitivity - 10));
+    MatView = GLMathLib.translate(MatView, GLMathLib.vec3(0, 0, Control.var.mouseScroll/Control.var.mouseSensitivity - Camera.eye[2]));
 
     // Create a transformation matrix for only the skybox.
     var MatViewSkybox = GLMathLib.mat4(1.0);
@@ -284,6 +286,28 @@ window.onload = () =>
                 MetallicParam.setValue(0);
                 RoughnessParam.setValue(0);
                 break;
+            case "Old Cabinet":
+                if (RenderObjectCabinet == null)
+                {
+                    loadMeshOldCabinet();
+                }
+                RenderObjectMesh = RenderObjectCabinet;
+                ColorParam.setValue([255,255,255]);
+                OverridePBRParam.setValue(false);
+                MetallicParam.setValue(0);
+                RoughnessParam.setValue(0);
+                break;
+            case "Sci-fi Helmet":
+                if (RenderObjectDamagedHelmet == null)
+                {
+                    loadMeshDamagedHelmet();
+                }
+                RenderObjectMesh = RenderObjectDamagedHelmet;
+                ColorParam.setValue([255,255,255]);
+                OverridePBRParam.setValue(false);
+                MetallicParam.setValue(0);
+                RoughnessParam.setValue(0);
+                break;
             case "Sphere":
                 RenderObjectMesh = RenderObjectSphere;
                 ColorParam.setValue([255,0,0]);
@@ -406,3 +430,38 @@ function loadMeshEamesLoungeChair()
     RenderObjectChair = new RenderObject(gl, meshChair);
     RenderObjectChair.setUniformValue("UUseWorldSpace", 0);
 }
+
+function loadMeshOldCabinet()
+{
+    // Old Cabinet
+    var materialCabinet = new MaterialPBR(gl);
+    materialCabinet.setBaseColorTexture("assets/OldCabinet/cabinet_Cabinet_BaseColor.png");
+    materialCabinet.setNormalTexture("assets/OldCabinet/cabinet_Cabinet_Normal.png");
+    materialCabinet.setMetallicTexture("assets/OldCabinet/cabinet_Cabinet_MRO.png");
+    materialCabinet.setRoughnessTexture("assets/OldCabinet/cabinet_Cabinet_MRO.png");
+    var materialCabinetArray = [];
+    for (let i = 0; i < 27; i++) materialCabinetArray.push(materialCabinet);
+    var meshCabinet = Mesh.createMesh(
+        "assets/OldCabinet/cabinet_cabinet.obj",
+        materialCabinetArray
+    );
+    RenderObjectCabinet = new RenderObject(gl, meshCabinet);
+    RenderObjectCabinet.setUniformValue("UUseWorldSpace", 0);
+}
+
+function loadMeshDamagedHelmet()
+{
+    // Old Cabinet
+    var materialDamagedHelmet = new MaterialPBR(gl);
+    materialDamagedHelmet.setBaseColorTexture("assets/DamagedHelmet/Default_albedo.jpg");
+    materialDamagedHelmet.setNormalTexture("assets/DamagedHelmet/Default_normal.jpg");
+    materialDamagedHelmet.setMetallicTexture("assets/DamagedHelmet/Default_MR.jpg");
+    materialDamagedHelmet.setRoughnessTexture("assets/DamagedHelmet/Default_MR.jpg");
+    var meshDamagedHelmet = Mesh.createMesh(
+        "assets/DamagedHelmet/DamagedHelmet.obj",
+        [materialDamagedHelmet]
+    );
+    RenderObjectDamagedHelmet = new RenderObject(gl, meshDamagedHelmet);
+    RenderObjectDamagedHelmet.setUniformValue("UUseWorldSpace", 0);
+}
+
