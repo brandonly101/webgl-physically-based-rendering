@@ -59,7 +59,7 @@ highp vec4 gammaCorrect(vec4 linear) { return pow(linear, vec4(1.0 / 2.2)); }
 //
 vec3 SchlickApprox(vec3 n, vec3 l, vec3 F0)
 {
-    // More intuitively, lerp(F0, <white>, 1.0 - pow(dot(n, l), 5.0))
+    // More intuitively, lerp(F0, <white>, pow(1.0 - dot(n, l), 5.0))
     return F0 + (1.0 - F0) * pow(1.0 - max(0.0, dot(n, l)), 5.0);
 }
 
