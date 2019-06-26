@@ -812,14 +812,19 @@ class RenderObjectSkybox extends RenderObject
         }
 
         // Integrate environment BRDF and render it to a 2D lookup texture to use.
+        const renderBuffer = gl.createRenderbuffer();
+        gl.bindRenderbuffer(gl.RENDERBUFFER, renderBuffer);
+
         this.setUniformValue("UIntegrateSpecBRDF", 1);
         gl.viewport(0, 0, 512, 512);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.RG16F, 512, 512);
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, MaterialSkybox.envBRDFLookup, 0);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
         this.render(); // Render it.
 
         // Unbind the framebuffer (and implicitly rebind the canvas).
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
         // Restore the skybox rendering shader.

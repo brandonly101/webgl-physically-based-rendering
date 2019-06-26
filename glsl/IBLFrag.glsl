@@ -173,6 +173,9 @@ void main(void)
         }
 
         Color /= totalWeight;
+
+        Color.a = 1.0;
+        gl_FragColor = Color; // Output in linear color space.
     }
     // Specular BRDF Integration (into 2D texture) case
     else
@@ -227,8 +230,8 @@ void main(void)
         SpecColorBias /= float(NUM_SAMPLES);
         Color.r = SpecColorScale;
         Color.g = SpecColorBias;
-    }
 
-    Color.a = 1.0;
-    gl_FragColor = Color; // Output in linear color space.
+        gl_FragColor.r = SpecColorScale;
+        gl_FragColor.g = SpecColorBias;
+    }
 }

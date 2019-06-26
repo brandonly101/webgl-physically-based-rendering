@@ -66,8 +66,8 @@ class DatGuiParameters
 var datGuiParams = new DatGuiParameters();
 var gui = new dat.GUI();
 
-const ENV_MIP_LEVELS = 9;
-const ENV_MIP_LEVELS_MIN = 5;
+const ENV_MIP_LEVELS = 10;
+const ENV_MIP_LEVELS_MIN = 4;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Main init and render loops.
