@@ -338,6 +338,9 @@ function resetViewport()
     gl.depthFunc(gl.LEQUAL);                                // Make near things obscure far things.
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);    // Clear the color as well as the depth buffer.
     gl.viewport(0, 0, canvas.width, canvas.height);         // Make the viewport adhere to the canvas size.
+
+    gl.enable(gl.CULL_FACE);
+    gl.cullFace(gl.BACK);
 }
 
 function loadSkybox(skyboxName)

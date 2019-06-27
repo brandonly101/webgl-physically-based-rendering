@@ -416,16 +416,16 @@ class Mesh
             {
                 // Vertices
                 indices.push(vertices.length/3);
-                vertices = vertices.concat(a);
+                vertices = vertices.concat(c);
                 indices.push(vertices.length/3);
                 vertices = vertices.concat(b);
                 indices.push(vertices.length/3);
-                vertices = vertices.concat(c);
+                vertices = vertices.concat(a);
 
                 // Normals
-                normals = normals.concat(a);
-                normals = normals.concat(b);
                 normals = normals.concat(c);
+                normals = normals.concat(b);
+                normals = normals.concat(a);
             }
             function divideTriangle(a, b, c, count)
             {
